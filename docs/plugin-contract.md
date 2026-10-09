@@ -3,7 +3,8 @@
 Reader: actionlint maintainer replacing the pyflakes hook with a generic checker interface, and the author of
 `actionlint-plugin-ruff`.
 
-Ruff facts below come from `astral-sh/ruff` at [`5b27c1ccfaa230fb195855f5cf3404a21e3379cd`] (0.17.0).
+Ruff facts come from `astral-sh/ruff` at [`5b27c1ccfaa230fb195855f5cf3404a21e3379cd`] (0.17.0). actionlint facts come
+from `kjanat/actionlint` branch `fix/actions-expression-semantics` at [`6567fe7a`] plus its uncommitted worktree.
 
 ## 1. What ruff offers
 
@@ -16,7 +17,7 @@ Ruff facts below come from `astral-sh/ruff` at [`5b27c1ccfaa230fb195855f5cf3404a
 
 ### 1.1 `ruff check` CLI
 
-Invocation actionlint needs:
+Invocation the adapter needs:
 
 ```sh
 ruff check --isolated --no-cache --output-format json --exit-zero \
@@ -49,7 +50,7 @@ Exit codes (`crates/ruff/src/lib.rs`):
 | 1    | violations found                     |
 | 2    | ruff failed: config error, panic, IO |
 
-With `--exit-zero` the fatal-severity branch is skipped too, so a panic inside ruff still exits 0. The plugin must look
+With `--exit-zero` the fatal-severity branch is skipped too, so a panic inside ruff still exits 0. The adapter must look
 at `severity` and stderr, never trust exit code alone when `--exit-zero` is set. Without `--exit-zero`, 1 means
 "diagnostics on stdout", 2 means "stdout untrustworthy, show stderr".
 
@@ -105,7 +106,7 @@ and needs URI → path mapping.
 - `ruff rule --all --output-format json` → array of the above.
 - `ruff linter --output-format json` → `[{ prefix, name, url, categories? }]`.
 
-Enough for the plugin to validate a user's `select` list and to render rule docs links offline.
+Enough for the adapter to validate a user's `select` list and to render rule docs links offline.
 
 ### 1.5 Pyflakes rule set in ruff
 
@@ -125,84 +126,112 @@ diagnostics (`textDocument/diagnostic`) when the client advertises it. Settings 
 Relevant only if actionlint gains a long-lived mode. One ruff process per actionlint run with virtual `untitled:`
 documents per step would amortize startup, but ruff startup is already single-digit ms.
 
-## 2. Contract actionlint sets for external checkers
+## 2. What actionlint already has
 
-Shape: actionlint owns the mapping from a workflow step to a snippet and back. The checker owns the language. Everything
-between is one JSON request and one JSON response over a child process.
+Pyflakes is gone on this branch. `--pyflakes` is accepted and ignored (`internal/cli/root.go`, `internal/cli/check.go`),
+the Action input prints a deprecation warning (`internal/githubaction/main.go`), and the `UPSTREAM.md` row for
+rhysd/actionlint#439 names a generic external-linter protocol as the replacement.
+
+Seams the contract reuses:
+
+| concern                  | existing seam                                                                                                                                                                                     |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| process scheduling       | `concurrentProcess` (semaphore, `Context` cancels children), `externalCommand.runInDirectory`, `cmdExecution.run` in `process.go`                                                                 |
+| tool resolution          | `ExternalCommandOptions{Executable, Arguments, Environment, WorkingDir}`, `ResolveExternalCommandOptions`, `execabs.LookPath`                                                                     |
+| CLI / env surface        | `--shellcheck` flag; `ACTIONLINT_<TOOL>_BIN`, `_FLAGS`, `_ENV` through `externalToolEnvironment(tool)` in `internal/cli/env.go`; `doctor` rows with `available`/`unavailable`/`disabled`          |
+| config                   | `Config.Tools` (`ToolsConfig`), `lint.external` rule group, `lint.disable`, `cfg.diagnosticLevel(name)`                                                                                           |
+| rule registry            | `ruleDescriptor{Category: "external", build, enabled}` in `rule_registry.go`; `analysis_engine.go` skips external rules whose level is `off`                                                      |
+| shell resolution         | `resolveRunShell` (step → job → workflow → runner/container), `shellcheckShell.analysis()` derives the dialect from the shell template                                                            |
+| snippet → YAML positions | `ExecRun.source` (`*scriptSource`), `pos`/`endPos`, spans skip YAML-synthesized bytes, `literal` gates fixes                                                                                      |
+| expression sanitizing    | `sanitizeExpressionsInScript`: `${{ … }}` → underscores, same length, newlines kept                                                                                                               |
+| diagnostic metadata      | `Error.Kind` (rule name), `Error.code`, `Error.severity`, `Error.fixes`, `Error.endPosition`, `Error.source` for findings in other files; `Diagnostic.Rule/Code/Severity/Fixes` in JSON and SARIF |
+| files read by a tool     | `inputFiles.add` through `rule.onInput`, surfaces as `AnalysisResult.Inputs`                                                                                                                      |
+| inline suppression       | `# actionlint:ignore RULE -- reason`, rule names only, whitelist `isInlineSuppressibleRule`                                                                                                       |
+| tool requirement query   | `AnalysisSession.RequiredTools` → `ExternalToolRequirements{Shellcheck bool}`                                                                                                                     |
+| Go-level extension       | `LinterOptions.OnRulesCreated func([]Rule) []Rule`                                                                                                                                                |
+| test harness             | `TestKnownShellCommandHelper`: the test binary re-executes itself as the fake tool                                                                                                                |
+
+Everything above is shellcheck-shaped by name only. The contract generalizes the names, keeps the mechanisms.
+
+## 3. The contract
+
+actionlint owns the workflow: which steps, which language, positions, suppression, output. The checker owns the
+language. Between them: one JSON request on stdin, one JSON response on stdout, per workflow file.
 
 The contract is actionlint's. actionlint carries no knowledge of any tool's flags, config files, output formats or exit
 codes. A tool joins by shipping an adapter that speaks this protocol. Ruff, shellcheck, PSScriptAnalyzer each get an
 adapter; actionlint stays unchanged when a tool changes its CLI.
 
-### 2.1 Discovery
+### 3.1 Registration
 
-actionlint config (`actionlint.yaml`) declares checkers:
+`actionlint.yaml`:
 
 ```yaml
-checkers:
-  - name: ruff
+tools:
+  shellcheck: { enabled: true }
+  ruff:
     command: [actionlint-plugin-ruff]
     languages: [python]
+    config:
+      select: [F]
+lint:
+  external:
+    ruff: on
 ```
 
-- `name` is the diagnostic source shown to users and the key for inline suppression (`# actionlint-ignore ruff/F401`).
-- `command` is argv, exec'd without a shell. Resolution via `PATH`.
-- `languages` are actionlint's shell identifiers: `bash`, `sh`, `pwsh`, `powershell`, `python`, `cmd`. actionlint
-  computes the effective shell per step (step `shell` → job `defaults.run.shell` → workflow `defaults.run.shell` →
-  runner default) and only dispatches matching steps.
-- One process per workflow file, not per step. The request carries every matching step of that file.
+- `tools.<name>` is the checker. `<name>` becomes `Error.Kind`, the rule ID in `lint.external`, `lint.disable`,
+  `# actionlint:ignore <name> -- reason`, and the `doctor` row. Registering it adds it to `isInlineSuppressibleRule`.
+- `command` is argv, exec'd without a shell, resolved with `execabs.LookPath`. `ACTIONLINT_<NAME>_BIN`, `_FLAGS`,
+  `_ENV` override it the way `SHELLCHECK` does today.
+- `languages` are the normalized shell names actionlint already derives: command basename of the resolved shell
+  template, lowercased, `.exe` stripped. `python`, `bash`, `sh`, `pwsh`, `powershell`, `cmd`, `node`. A step whose
+  shell cannot be resolved (`shellValueUnknown`) is never dispatched.
+- `config` is opaque to actionlint and forwarded verbatim.
+- Each `tools.<name>` entry synthesizes a `ruleDescriptor` with `Category: "external"` at config load, so presets,
+  `lint.external`, `doctor`, `RequiredTools` and the JSON schema see it without per-tool code.
+  `ExternalToolRequirements` becomes `map[string]bool`.
+- shellcheck keeps its builtin rule. `ShellcheckConfig` and `-x` source following are shellcheck-only and stay put.
 
-Builtin shellcheck and the pyflakes code are reimplemented as checkers under this contract, so the contract has two
-first-party consumers from day one.
-
-### 2.2 Request
-
-actionlint writes one JSON object to the checker's stdin, then closes stdin.
+### 3.2 Request
 
 ```json
 {
   "protocol": 1,
   "workflow": "/abs/.github/workflows/ci.yml",
+  "config": { "select": ["F"] },
   "snippets": [
     {
       "id": "jobs.test.steps[2]",
       "language": "python",
-      "source": "import os\nprint(x)\n",
-      "line": 42,
-      "column": 9,
-      "indent": 8,
-      "expressions": [
-        { "line": 2, "column": 7, "end_column": 23, "text": "${{ matrix.name }}" }
-      ],
+      "shell": "python -u {0}",
+      "source": "import os\nprint(_____________)\n",
+      "expressions": [{ "line": 2, "column": 7, "end_column": 20 }],
+      "working_directory": "/abs/repo/src",
       "env": ["GITHUB_TOKEN", "FOO"]
     }
   ]
 }
 ```
 
-- `protocol` is the contract version. The checker rejects unknown majors with exit 3.
-- `source` is the `run:` scalar after YAML folding, exactly what the runner would write to the script file. Line 1 of
-  `source` is `line` in the workflow. `column` is the column of the scalar's first character. `indent` is the block
-  indent stripped by YAML, so column mapping is `workflow_col = snippet_col + indent` for every line after the first and
-  `column + snippet_col - 1` for line 1 when the scalar starts inline.
-- `expressions` lists `${{ }}` spans inside the snippet in snippet coordinates. actionlint replaces them with a
-  placeholder before sending (upstream pyflakes hook does the same with `${{ }}` → `0`). The checker can use the spans
-  to drop diagnostics that sit entirely inside a placeholder.
-- `env` is the set of names from `env:` at step, job and workflow level. Optional, lets a checker know about
-  `os.environ` keys. Not needed for ruff.
+- `source` is `ExecRun.Run.Value` after `sanitizeExpressionsInScript`. Response coordinates refer to this text,
+  1-based, so `scriptSource.pos`/`endPos` map them back and the checker never learns YAML exists. Underscores keep
+  columns stable.
+- `expressions` are the sanitized `${{ }}` spans in `source` coordinates. A checker drops a diagnostic that lies fully
+  inside one.
+- `shell` is the resolved template, `language` its normalized name. The checker picks flags from either.
+- `working_directory` is `runPaths.effectiveRunDirectory` resolved locally, or `null` when it is `directoryUnknown`.
+- `env` lists names from `env:` at step, job and workflow level. Names only.
 
-### 2.3 Response
-
-The checker writes one JSON object to stdout.
+### 3.3 Response
 
 ```json
 {
   "protocol": 1,
-  "checker": { "name": "ruff", "version": "0.17.0" },
+  "tool": { "name": "ruff", "version": "0.17.0" },
   "diagnostics": [
     {
       "snippet": "jobs.test.steps[2]",
-      "rule": "F821",
+      "code": "F821",
       "severity": "error",
       "message": "Undefined name `x`",
       "line": 2,
@@ -211,80 +240,84 @@ The checker writes one JSON object to stdout.
       "end_column": 8,
       "url": "https://docs.astral.sh/ruff/rules/undefined-name",
       "fix": {
-        "applicability": "safe",
-        "message": "Remove unused import: `os`",
-        "edits": [{ "line": 1, "column": 1, "end_line": 2, "end_column": 1, "content": "" }]
+        "description": "Remove unused import: `os`",
+        "edits": [{ "line": 1, "column": 1, "end_line": 2, "end_column": 1, "replacement": "" }]
       }
     }
   ],
+  "inputs": ["/abs/repo/scripts/lib.sh"],
   "errors": ["ruff exited 2: ..."]
 }
 ```
 
-- Coordinates are 1-based, snippet-relative, `end_*` exclusive. actionlint translates to workflow coordinates. The
-  checker never sees or needs workflow line numbers for output.
-- `rule` is the checker's own code. actionlint renders `[ruff/F821]` and matches suppressions on `ruff/F821`, `ruff/F`,
-  `ruff`.
-- `severity` is one of `error`, `warning`, `info`. actionlint decides exit status from its own severity policy, not the
-  checker's.
-- `fix` is optional. actionlint ignores it today, keeps it for a future `-fix`.
-- `errors` are checker-level failures that did not prevent other snippets from being checked. Rendered once per workflow
-  as a single actionlint error, not per step.
+- `code` → `Error.code`, `severity` → `Error.severity`. `Error.Message` becomes
+  `<name> reported issue in this script: <code>:<severity>:<line>:<col>: <message>`, the shellcheck wording. `url`
+  feeds `Diagnostic` and SARIF `helpUri`.
+- `line`/`column`/`end_line`/`end_column` are `source` coordinates, `end_*` exclusive. actionlint calls `source.pos`
+  and `source.endPos`; when mapping fails the finding lands on `RunPos`, the shellcheck fallback.
+- `path` (optional, absolute) on a diagnostic reports a finding in another file. actionlint builds it the way
+  `sourcedDiagnostic` does and adds the path to `inputs`.
+- `fix.edits` pass the `shellcheckDiagnosticFixes` gate: literal block only, one line per edit, no overlap, indent
+  preserved. Otherwise the fix is dropped and the diagnostic kept.
+- `severity` is `error`, `warning`, `info` or `style`. `sarifLevel` already maps these.
+- `inputs` are files the checker read. They join `AnalysisResult.Inputs`.
+- `errors` are checker-level failures. actionlint reports them once per workflow as a rule error, the path a shellcheck
+  JSON parse failure takes today.
 
 Exit codes:
 
-| code          | meaning                                                                 |
-| ------------- | ----------------------------------------------------------------------- |
-| 0             | response on stdout, possibly with diagnostics and `errors`              |
-| 3             | protocol mismatch, stdout empty, stderr explains                        |
-| anything else | checker crashed, stdout discarded, stderr shown as one actionlint error |
+| code          | actionlint behaviour                                                                          |
+| ------------- | --------------------------------------------------------------------------------------------- |
+| 0             | parse stdout                                                                                  |
+| 3             | protocol mismatch, stdout empty, stderr becomes the error                                     |
+| anything else | `cmdExecution.run` today: non-empty stdout is parsed, empty stdout is an error quoting stderr |
 
-Diagnostics are not an exit code. Exit code only says whether the response is valid.
+Diagnostics never change the exit code. A tool that exits non-zero on findings still works through the existing stdout
+rule.
 
-### 2.4 Behaviour rules
+### 3.4 Behaviour rules
 
-- Hermetic: the response is a function of the request and the `config` object alone. A checker reads no config files,
-  env vars or dotfiles on its own. A tool that discovers config from the filesystem gets that behaviour disabled by its
-  adapter, and re-enabled only through an explicit `config` key.
-- Deterministic order: diagnostics sorted by `snippet`, `line`, `column`, `rule`.
-- No network, no file writes outside the temp dir, no reading the workflow file. Everything needed is in the request.
-- Timeout per process is actionlint's. Default 30 s, configurable in `checkers[].timeout`.
-- cwd is the workflow's repo root. The request carries `workflow` as an absolute path, so an adapter that was told via
-  `config` to honour project config knows where to look.
-- Stderr is for humans. actionlint shows it only on a non-zero exit.
+- Hermetic: the response is a function of the request and `config`. A checker reads no config files, env vars or
+  dotfiles on its own. A tool that discovers config from the filesystem gets that disabled by its adapter, re-enabled
+  only through an explicit `config` key.
+- Deterministic order: diagnostics sorted by `snippet`, `line`, `column`, `code`.
+- No network. File reads only under `working_directory` or the repo, every one listed in `inputs`.
+- One process per workflow file. `VisitWorkflowPre` collects, `VisitWorkflowPost` sends and waits. The
+  `concurrentProcess` semaphore still bounds parallelism across files.
+- cwd is `ruleContext.projectRoot`, else `workingDir`. Cancelling `LinterOptions.Context` kills the child.
+- Stderr is for humans. Shown only when the response is invalid.
 
-## 3. `actionlint-plugin-ruff` on that contract
+## 4. `actionlint-plugin-ruff` on that contract
 
-Per request: one `ruff check` process per snippet, or one process with `@argfile` over temp files when `snippets` > N.
-Start with per-snippet via stdin, it is simplest and ruff startup is cheap.
+Per request: one `ruff check` process per snippet over stdin. `@argfile` batching can come later without touching the
+contract.
 
-Mapping:
+Request → ruff:
 
-| request / config                            | ruff flag                                                                                      |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| snippet `source`                            | stdin                                                                                          |
-| `workflow` + snippet `id`                   | `--stdin-filename <workflow>.<id>.py`, only to give the `.py` suffix and a readable `filename` |
-| always, unless `project_config: true`       | `--isolated`                                                                                   |
-| plugin config `select` (default `["F"]`)    | `--select`                                                                                     |
-| plugin config `ignore`                      | `--ignore`                                                                                     |
-| plugin config `target_version`              | `--target-version`                                                                             |
-| plugin config `extra_config` (TOML strings) | `--config ...` each                                                                            |
-| always                                      | `--no-cache --output-format json --exit-zero --quiet -`                                        |
+| request / config                      | ruff flag                                                                                      |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| snippet `source`                      | stdin                                                                                          |
+| `workflow` + snippet `id`             | `--stdin-filename <workflow>.<id>.py`, only to give the `.py` suffix and a readable `filename` |
+| always, unless `project_config: true` | `--isolated`                                                                                   |
+| `config.select` (default `["F"]`)     | `--select`                                                                                     |
+| `config.ignore`                       | `--ignore`                                                                                     |
+| `config.target_version`               | `--target-version`                                                                             |
+| `config.extra_config` (TOML strings)  | `--config ...` each                                                                            |
+| always                                | `--no-cache --output-format json --exit-zero --quiet -`                                        |
 
-Response mapping from ruff JSON:
+Ruff JSON → response:
 
-| ruff                                | contract              |
-| ----------------------------------- | --------------------- |
-| `code` (fallback `name` when null)  | `rule`                |
-| `severity`                          | `severity`            |
-| `message`                           | `message`             |
-| `location.row/column`               | `line/column`         |
-| `end_location.row/column`           | `end_line/end_column` |
-| `url`                               | `url`                 |
-| `fix.applicability/message/edits[]` | `fix`                 |
+| ruff                               | contract                   |
+| ---------------------------------- | -------------------------- |
+| `code` (fallback `name` when null) | `code`                     |
+| `severity`                         | `severity`                 |
+| `message`                          | `message`                  |
+| `location.row/column`              | `line/column`              |
+| `end_location.row/column`          | `end_line/end_column`      |
+| `url`                              | `url`                      |
+| `fix.message`, `fix.edits[]`       | `fix.description`, `edits` |
 
-Drop a diagnostic when its range lies fully inside an `expressions` span: that code was `${{ }}` before placeholder
-substitution.
+Drop a diagnostic whose range lies fully inside an `expressions` span.
 
 `--isolated` is the default. With it the result depends on `config` alone, the same guarantee pyflakes gave.
 `project_config: true` drops `--isolated`; ruff then walks up from the `--stdin-filename` path and applies the repo's
@@ -293,13 +326,13 @@ file. With `force-exclude = true` in that file a matching `exclude` silently yie
 passes `--no-force-exclude` whenever `project_config` is on.
 
 Failure handling: ruff exit 2 or any `severity: "fatal"` → append to `errors`, keep diagnostics from the other snippets.
-Ruff missing from `PATH` → exit 1 with a clear stderr line, actionlint renders that once.
+Ruff missing from `PATH` → exit 1 with one stderr line.
 
-Plugin config lives in `actionlint.yaml` under the checker entry and is forwarded verbatim as `config` in the request:
+`actionlint.yaml`:
 
 ```yaml
-checkers:
-  - name: ruff
+tools:
+  ruff:
     command: [actionlint-plugin-ruff]
     languages: [python]
     config:
@@ -308,25 +341,27 @@ checkers:
       project_config: false
 ```
 
-So the request gains one field: `"config": { ...checker-specific... }`, opaque to actionlint.
+## 5. Why a process contract and not a Go plugin API
 
-## 4. Why a process contract and not a Go plugin API
-
-- actionlint is a static Go binary. Go plugins need identical toolchain and are Linux-only. Process boundary keeps
-  actionlint's build untouched.
-- Checkers in any language. Ruff's own wasm is JS-only, so the plugin wraps the CLI anyway.
-- One request per workflow keeps process count at `workflows × checkers`, not `steps × checkers`.
-- Same contract for shellcheck, pyflakes-compat, pwsh `PSScriptAnalyzer`, future ones.
+- actionlint is a static Go binary. Go plugins need an identical toolchain and are Linux-only. The process boundary
+  keeps actionlint's build untouched.
+- `OnRulesCreated` already serves Go consumers who want in-process rules.
+- Checkers in any language. Ruff's own wasm is JS-only, so the adapter wraps the CLI anyway.
+- One request per workflow keeps process count at `workflows × tools`, not `steps × tools`.
+- Same contract for pyflakes-compat, pwsh `PSScriptAnalyzer`, future ones. shellcheck can migrate later.
 
 ## Unresolved
 
-- Steps inside placeholder: drop diagnostic fully inside `${{ }}` span, or report with note? Pick drop.
-- Protocol as one-request-per-workflow or one-request-per-run (all workflows)? Per workflow simpler, per run fewer
-  spawns. Pick per workflow.
-- Keep `shellcheck` and `pyflakes` as builtin or move to this contract in same release? Builtin keeps users'
-  `-shellcheck` flags working. Decide.
-- Suppression key `ruff/F401` syntax vs reuse ruff `# noqa` inside `run:` text. Both can work, `# noqa` already works
-  via ruff.
-- Fix application: actionlint `-fix` not in scope now. Keep `fix` field or drop until needed?
+- Diagnostic fully inside `${{ }}` span: drop, or report with a note? Pick drop.
+- Per-workflow request vs per-step (current shellcheck model)? Per-workflow fewer spawns, needs collect-then-send in the
+  rule. Pick per-workflow.
+- Code-level suppression `# actionlint:ignore ruff/F401`: extend `isInlineSuppressibleRule` for `<tool>/<code>`, or
+  rule-level only? Rule-level works today; code-level is new grammar.
+- `tools.<name>` synthesizing a `ruleDescriptor` vs one fixed `external-tool` rule that fans out. Synthesized keeps
+  `lint.external.<name>` and `doctor` per tool. Pick synthesized.
+- Move shellcheck onto the contract now or keep builtin? Builtin keeps `-shellcheck`, `tools.shellcheck.config`, `-x`
+  intact. Keep builtin.
+- `fix` field from day one, since `Error.fixes` and the gate exist, or drop until `-fix`? Keep.
 
 [`5b27c1ccfaa230fb195855f5cf3404a21e3379cd`]: https://github.com/astral-sh/ruff/commit/5b27c1ccfaa230fb195855f5cf3404a21e3379cd
+[`6567fe7a`]: https://github.com/kjanat/actionlint/commit/6567fe7a
