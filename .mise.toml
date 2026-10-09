@@ -1,0 +1,3 @@
+[tools]
+"github:kjanat/dprint" = "latest"
+"github:kjanat/runner" = "latest"
