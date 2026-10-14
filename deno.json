@@ -1,0 +1,6 @@
+{
+	"tasks": {
+		"test:wasm": "deno test --allow-read tests/wasm_test.ts",
+		"build": "deno run --allow-run=cargo,wasm-opt --allow-read --allow-write=artifacts scripts/build.ts"
+	}
+}

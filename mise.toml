@@ -2,7 +2,7 @@
 "github:kjanat/runner"    = "0.27.1"
 "github:rvben/rumdl"      = "0.2.79"
 "github:tombi-toml/tombi" = "1.7.3"
-"github:astral-sh/ruff"   = "0.16.10"
+deno                      = "2.9.7"
 
 [tools."github:kjanat/dprint"]
 version = "0.59.0-kjanat"
