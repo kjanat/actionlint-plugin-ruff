@@ -5,9 +5,11 @@ mod engine;
 mod wasm;
 
 use serde::Deserialize;
-use serde_json::{Value, json};
+use serde_json::Value;
+use serde_json::json;
 
 pub const ABI_VERSION: u32 = 1;
+pub const METADATA_VERSION: u32 = 1;
 pub const MAX_INPUT_BYTES: usize = 8 * 1024 * 1024;
 
 #[derive(Deserialize)]
@@ -61,12 +63,32 @@ pub fn metadata() -> Value {
     }
     schema["properties"]["target-version"]["default"] = json!("py314");
     json!({
+        "metadata_version": METADATA_VERSION,
         "abi_version": ABI_VERSION,
+        "transport": "wasm-core-json",
+        "id": env!("CARGO_PKG_NAME"),
+        "name": "Ruff",
+        "description": env!("CARGO_PKG_DESCRIPTION"),
+        "license": env!("CARGO_PKG_LICENSE"),
+        "homepage": env!("CARGO_PKG_HOMEPAGE"),
+        "repository": env!("CARGO_PKG_REPOSITORY"),
+        "documentation_url": "https://github.com/kjanat/actionlint-plugin-ruff/blob/master/docs/plugin-contract.md",
+        "update_url": "https://api.github.com/repos/kjanat/actionlint-plugin-ruff/releases",
+        "update_format": "github-releases-v1",
+        "languages": ["python"],
+        "shells": ["python"],
+        "file_extensions": ["py", "pyi"],
+        "conflicts": [],
         "plugin_version": env!("CARGO_PKG_VERSION"),
         "engine": {"name": "ruff", "version": ruff_linter::VERSION},
+        "interfaces": {
+            "check": [{"version": 1, "export": "check", "exclusive_group": "python/ruff/check"}],
+            "validate_config": [{"version": 1, "export": "validate_config"}],
+            "metadata": [{"version": 1, "export": "metadata"}]
+        },
         "capabilities": {
             "check": true, "validate_config": true, "config_schema": true,
-            "noqa": false, "filesystem": false, "fixes": false,
+            "noqa": false, "filesystem": false, "fixes": false, "format": false,
             "position_encoding": "unicode", "max_input_bytes": MAX_INPUT_BYTES
         },
         "config_schema": schema

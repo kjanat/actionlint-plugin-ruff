@@ -1,6 +1,6 @@
 # Embedded Ruff WASM contract
 
-This is the implemented contract for `actionlint-plugin-ruff`. It replaces the earlier stdin/stdout checker design.
+This is the implemented contract for `actionlint-plugin-ruff`.
 Actionlint owns shell selection, expression sanitization, source mapping, suppression, scheduling, and cancellation.
 Ruff owns Python analysis and configuration validation. The plugin receives one already-sanitized snippet per call.
 
@@ -9,8 +9,10 @@ Ruff owns Python analysis and configuration validation. The plugin receives one 
 The packaged module is `artifacts/plugin.wasm`, targeting `wasm32-unknown-unknown`. It requires no host imports or WASI.
 Requests and responses are UTF-8 JSON bytes in linear memory.
 
-For embedding in a Go executable, use the reproducible `artifacts/plugin.wasm.gz` asset and decompress it once with
-`compress/gzip` before passing the bytes to the runtime. It restores the exact same core module and preserves this ABI.
+For embedding in any host executable, use the reproducible `artifacts/plugin.wasm.gz` asset and decompress it once
+before passing the bytes to a compatible core WASM runtime. It restores the exact same core module and preserves this
+ABI.
+Go can use `compress/gzip`; a Rust host can use its preferred gzip implementation.
 
 | Export            | Signature                            | Meaning                                                                        |
 | ----------------- | ------------------------------------ | ------------------------------------------------------------------------------ |
@@ -27,6 +29,14 @@ An `i64` result packs the output pointer in the high 32 bits and byte length in 
 ```go
 pointer := uint32(result >> 32)
 length := uint32(result)
+```
+
+The equivalent Rust unpacking preserves the signed WASM result's bits:
+
+```rust
+let bits = result as u64;
+let pointer = (bits >> 32) as u32;
+let length = bits as u32;
 ```
 
 The host treats pointers, lengths, and packed results as unsigned bit patterns. It must:
@@ -47,6 +57,40 @@ happens once inside the plugin; the host needs no initialization export.
 The host supplies memory and execution limits and terminates/discards an instance on cancellation or a WASM trap.
 Panics abort/trap instead of becoming JSON errors. The 8 MiB limit applies to request bytes, not total guest memory or
 response size; metadata contains the full schema. Buffer ownership does not replace host memory limits.
+
+## Host portability
+
+This is a serialized plugin contract, independent of the language implementing actionlint. `transport: "wasm-core-json"`
+identifies the current binding; absent on legacy artifacts means the same core WASM/JSON binding. `abi_version: 1`
+specifies that binding's exact memory and calling rules. Operation versions describe the data contract. A rewrite from
+Go to Rust changes the host adapter, not the plugin ID, operation versions, or artifacts.
+
+The boundary contains WASM integers, guest-owned linear-memory buffers, and UTF-8 JSON. Guest pointers are offsets into
+guest memory, never pointers into Go or Rust host memory. No Go struct layout, Rust trait object, enum layout,
+allocator,
+compiler version, or runtime-specific compiled-module format is part of the contract. Hosts copy results into their own
+memory and release guest allocations with the guest's `dealloc`. They must parse response objects with support for
+unknown optional fields; Rust consumers must not apply `serde(deny_unknown_fields)` to extensible response or discovery
+objects. Requests retain the stricter versioned rules described below.
+
+Source and filenames are ordinary JSON strings. The v1 coordinate unit is Unicode scalar values, not UTF-8 byte indices,
+grapheme clusters, or LSP UTF-16 units. Preserve it when changing the host language. Virtual filenames describe
+snippets;
+they do not grant filesystem access. Actionlint's YAML AST, internal diagnostic types, editor protocol objects, and
+cancellation primitives remain host implementation details.
+
+The same packaged artifact is exercised by independent Go/wazero, Rust/Wasmi, and TypeScript/WebAssembly hosts. The Rust
+host test is a separate Cargo package with no dependency on this plugin crate or Ruff, and uses the same frozen v1
+signature fixture as the Go test. It verifies static prefix discovery, metadata parity, config error shapes, repeated
+Unicode checks, input/output ownership, and fuel-based interruption under a host memory limit. Its runtime dependency is
+kept out of the guest build.
+
+A future Rust rewrite may use a different compatible core runtime without changing the contract. If typed WIT/component
+bindings or a native transport are added later, define and version that binding separately, retain the core v1 artifact
+for existing hosts, and adapt to the same versioned operation data contracts wherever semantics stay unchanged. A core
+module does not become a component by relabeling metadata. Runtime-specific compilation caches stay local to each host;
+redistributable plugins remain portable artifacts. Native Rust linking may be offered separately, but Rust ABI/trait
+compatibility is not a replacement for this serialized boundary.
 
 ## Requests and responses
 
@@ -112,9 +156,29 @@ catalog.
 
 ```json
 {
+  "metadata_version": 1,
   "abi_version": 1,
+  "transport": "wasm-core-json",
+  "id": "actionlint-plugin-ruff",
+  "name": "Ruff",
+  "description": "Hermetic Ruff engine for actionlint, with a core WebAssembly JSON ABI",
+  "license": "MIT",
+  "homepage": "https://github.com/kjanat/actionlint-plugin-ruff",
+  "repository": "https://github.com/kjanat/actionlint-plugin-ruff",
+  "documentation_url": "https://github.com/kjanat/actionlint-plugin-ruff/blob/master/docs/plugin-contract.md",
+  "update_url": "https://api.github.com/repos/kjanat/actionlint-plugin-ruff/releases",
+  "update_format": "github-releases-v1",
+  "languages": ["python"],
+  "shells": ["python"],
+  "file_extensions": ["py", "pyi"],
+  "conflicts": [],
   "plugin_version": "0.1.0",
   "engine": { "name": "ruff", "version": "0.17.0" },
+  "interfaces": {
+    "check": [{ "version": 1, "export": "check", "exclusive_group": "python/ruff/check" }],
+    "validate_config": [{ "version": 1, "export": "validate_config" }],
+    "metadata": [{ "version": 1, "export": "metadata" }]
+  },
   "capabilities": {
     "check": true,
     "validate_config": true,
@@ -122,6 +186,7 @@ catalog.
     "noqa": false,
     "filesystem": false,
     "fixes": false,
+    "format": false,
     "position_encoding": "unicode",
     "max_input_bytes": 8388608
   },
@@ -133,6 +198,105 @@ The actual `config_schema` is generated by `schemars` from the linked Ruff `Opti
 options removed and plugin defaults annotated. Embed it as a complete schema document, preserving its `$defs` and
 references. JSON Schema cannot express every Ruff semantic error; `validate_config` is authoritative.
 
+### Discovery and plugin selection
+
+`id` is the stable plugin identity; `plugin_version` is its release version. Project URLs refer to this wrapper,
+while `engine` identifies the linked Ruff version. `update_url` with `update_format: "github-releases-v1"` identifies
+GitHub's releases API, not a WASM download URL or a request to update automatically. There are currently no published
+releases; an empty feed means no update is available. An updater must select an eligible release, obtain its artifacts
+and checksums, and check compatibility before replacing an installed plugin. Never derive a supported interface from a
+plugin or Ruff version number.
+
+`languages` uses editor language identifiers. `shells` contains canonical actionlint shell identifiers, so `python`
+covers snippets the host has identified as Python. The host continues to parse interpreter commands such as
+`python3.12 -u {0}`, sanitize expressions, and select snippets; the plugin does not parse shell command lines.
+`file_extensions` contains lowercase extensions without the leading dot. `.pyi` selects stub parsing. These are
+selection hints, not a reason to reject a sanitized Python snippet with a virtual filename.
+
+`conflicts` lists plugin IDs that cannot be active together. An empty list declares no explicit cross-plugin conflict.
+Identical plugin IDs are alternate versions of the same plugin. An operation's `exclusive_group` declares
+interchangeable
+providers: the host chooses one provider in that group for that operation on a matching snippet, preventing duplicate
+Ruff diagnostics. Overlapping language support alone does not constitute a conflict. Operation groups are independent,
+so a future formatter can coexist with a checker. The host controls selection and overrides; metadata never disables
+another plugin by itself.
+
+### Interface compatibility and evolution
+
+Compatibility has three independent versions:
+
+| Field                              | Versions                                                                                    |
+| ---------------------------------- | ------------------------------------------------------------------------------------------- |
+| `metadata_version`                 | Discovery object format. Absent on legacy artifacts means the original v1 metadata.         |
+| `abi_version`                      | Core memory layout, allocation ownership, calling convention, and host-import requirements. |
+| `interfaces.<operation>[].version` | That operation's JSON request, response, coordinates, and semantics.                        |
+
+Version numbers are exact positive integers, not minimum host versions. Hosts explicitly select an understood operation
+version and its advertised `export`. An absent operation or unsupported version disables that optional feature; a
+missing required operation prevents activation. Unknown optional fields and operation names must be ignored. The
+provided `resolveInterface` and `requireInterface` helpers implement these rules without a runtime. The development
+host checks the operation versions before checking a snippet. Legacy artifacts without `metadata_version` or
+`interfaces` expose only the original `check`, `validate_config`, and `metadata` v1 exports.
+
+Keep every advertised v1 contract usable. Add optional response/discovery fields with existing fields and meanings
+preserved. Existing `check` requests reject unknown fields, so a host cannot send new request fields merely because a
+plugin is newer. A new request shape, changed required field, coordinate unit, error meaning, or result shape needs a
+new
+operation version and a separate export, for example `check_v2`. Advertise both versions while retaining v1 for old
+hosts. Memory/ownership or calling-convention changes need a new ABI version; incompatible discovery changes need a new
+metadata version. Plugin release versions do not substitute for these contract versions. Ruff rule/default changes
+remain engine behavior and are governed by the engine release and user configuration, not the memory ABI.
+
+For example, a later plugin could add `format: [{ "version": 1, "export": "format_v1" }]` and
+`fix: [{ "version": 1, "export": "fix_v1" }]` alongside the existing interfaces. This build has neither export:
+`capabilities.format` and `capabilities.fixes` are false. Adding them requires specified and tested contracts first;
+changing a boolean is insufficient. A future fix contract must distinguish safe and unsafe fixes and define edit
+coordinates, non-overlap, and the exact source revision to which edits apply. Producing edits does not authorize
+applying
+them: the CLI or LSP host owns automatic application, unsafe-fix opt-in, and mapping back to workflow YAML.
+
+An actionlint LSP can reuse the check interface for diagnostics and later negotiate format/fix interfaces for formatting
+and code actions. The host translates one-based Unicode positions to its negotiated LSP position encoding, maps snippet
+edits to YAML, and rejects edits spanning sanitized expressions or stale document versions. The engine does not
+advertise
+an LSP transport; LSP methods and document lifetime belong to the host. Formatting, fix generation, and automatic edit
+application remain separate capabilities.
+
+The frozen `tests/fixtures/abi-v1.json` signatures are checked against the actual compiled module by the Go and Rust
+host integration tests. Existing Rust, TypeScript, and Go probes retain the v1 requests, error shapes, buffer ownership,
+and Unicode
+coordinates. Metadata tests cover legacy discovery, coexistence of operation versions, unsupported required versions,
+unknown optional extensions, unsupported transports, and ambiguous descriptors. Run these checks against rebuilt
+artifacts before accepting any
+interface change; extending the fixture to excuse a v1 break is not a compatible update.
+
+The `Contract checks` workflow runs these checks on pull requests and pushes to `master`. It builds and packages the
+engine before exercising static discovery, operation negotiation, runtime behavior, CLI handling, and both Go and Rust
+hosts,
+then checks formatting, Rust/TypeScript linting, and Go cleanup errors with `errcheck`. Generated artifacts remain build
+outputs rather than committed
+catalogs.
+
+### Static metadata without instantiation
+
+The packaged module has an `actionlint.plugin` custom section immediately after the eight-byte core WASM header. Its
+payload is UTF-8 JSON, byte-for-byte identical to `metadata.json`, including the trailing newline and full schema. It
+contains the same object returned by the runtime `metadata()` export.
+
+To inspect the module without a runtime, read the core header, section id `0`, a u32 LEB128 section length, a u32 LEB128
+name length, the UTF-8 name `actionlint.plugin`, then the remaining section bytes as JSON. The reader can stop there;
+it does not need to read, compile, validate, or execute the code section. The provided TypeScript reader rejects invalid
+headers, overflowing/truncated lengths, malformed metadata, and metadata payloads above 1 MiB.
+
+This layout supports reading a file prefix or an HTTP Range response containing the complete first section. For network
+discovery, the identical `metadata.json` sidecar can be fetched directly. Gzip assets must be decompressed before
+section
+inspection. Reading metadata does not validate the executable module; normal module validation happens when it is loaded
+for checking Python.
+
+The packaging step adds or replaces this section after WASM optimization, then regenerates the gzip asset and checksums.
+The builder generates the payload from the engine rather than maintaining a separate manifest or schema snapshot.
+
 The build obtains `schema.json` by calling `metadata` on the final module, keeping editor completion and the engine on
 the same version without a schema snapshot in the source tree. Upstream references are
 [Ruff's options](https://github.com/astral-sh/ruff/blob/5b27c1ccfaa230fb195855f5cf3404a21e3379cd/crates/ruff_workspace/src/options.rs)
@@ -141,7 +305,7 @@ and its
 
 ## Host responsibilities
 
-The Go host can compile the embedded module once and pool instances. It forwards sanitized Python and opaque Ruff
+A Go or Rust host can compile the embedded module once and pool instances. It forwards sanitized Python and opaque Ruff
 options,
 unwraps the response, then applies expression-span filtering and actionlint's YAML source mapping. The plugin does not
 interpret `${{ }}`, workflow YAML, shell strings, or actionlint suppressions. The host supplies virtual filenames and

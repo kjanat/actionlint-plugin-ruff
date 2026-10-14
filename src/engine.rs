@@ -9,14 +9,18 @@ use ruff_linter::suppression::Suppressions;
 use ruff_python_ast::PySourceType;
 use ruff_python_codegen::Stylist;
 use ruff_python_index::Indexer;
-use ruff_python_parser::{ParseOptions, parse_unchecked};
-use ruff_ranged_value::{ValueSource, ValueSourceGuard};
-use ruff_source_file::{PositionEncoding, SourceLocation};
+use ruff_python_parser::ParseOptions;
+use ruff_python_parser::parse_unchecked;
+use ruff_ranged_value::ValueSource;
+use ruff_ranged_value::ValueSourceGuard;
+use ruff_source_file::PositionEncoding;
+use ruff_source_file::SourceLocation;
 use ruff_workspace::Settings;
 use ruff_workspace::configuration::Configuration;
 use ruff_workspace::options::Options;
 use serde::Serialize;
-use serde_json::{Value, json};
+use serde_json::Value;
+use serde_json::json;
 
 use crate::CheckRequest;
 

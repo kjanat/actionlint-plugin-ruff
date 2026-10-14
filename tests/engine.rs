@@ -1,5 +1,8 @@
-use actionlint_plugin_ruff::{check, metadata, validate_config};
-use serde_json::{Value, json};
+use actionlint_plugin_ruff::check;
+use actionlint_plugin_ruff::metadata;
+use actionlint_plugin_ruff::validate_config;
+use serde_json::Value;
+use serde_json::json;
 
 fn lint(source: &str, config: Value) -> Value {
     check(
@@ -181,6 +184,20 @@ fn metadata_schema_comes_from_the_linked_engine() {
     let data = metadata();
     assert_eq!(data["engine"]["version"], ruff_linter::VERSION);
     assert_eq!(data["abi_version"], 1);
+    assert_eq!(data["metadata_version"], 1);
+    assert_eq!(data["transport"], "wasm-core-json");
+    assert_eq!(data["id"], "actionlint-plugin-ruff");
+    assert_eq!(data["homepage"], env!("CARGO_PKG_HOMEPAGE"));
+    assert_eq!(data["languages"], json!(["python"]));
+    assert_eq!(data["shells"], json!(["python"]));
+    assert_eq!(data["file_extensions"], json!(["py", "pyi"]));
+    assert_eq!(data["conflicts"], json!([]));
+    assert_eq!(data["interfaces"]["check"][0]["version"], 1);
+    assert_eq!(data["interfaces"]["check"][0]["export"], "check");
+    assert_eq!(data["capabilities"]["format"], false);
+    assert_eq!(data["capabilities"]["fixes"], false);
+    assert!(data["interfaces"].get("format").is_none());
+    assert!(data["interfaces"].get("fix").is_none());
     assert_eq!(data["config_schema"]["additionalProperties"], false);
     assert!(data["config_schema"]["properties"].get("lint").is_some());
     assert!(data["config_schema"]["properties"].get("extend").is_none());

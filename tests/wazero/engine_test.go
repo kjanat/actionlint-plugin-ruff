@@ -8,6 +8,7 @@ import (
 	"flag"
 	"io"
 	"os"
+	"slices"
 	"testing"
 	"time"
 
@@ -21,7 +22,11 @@ func TestCoreModuleInGo(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 	runtime := wazero.NewRuntimeWithConfig(ctx, wazero.NewRuntimeConfig().WithMemoryLimitPages(4096).WithCloseOnContextDone(true))
-	defer runtime.Close(context.Background())
+	defer func() {
+		if err := runtime.Close(context.Background()); err != nil {
+			t.Errorf("close WASM runtime: %v", err)
+		}
+	}()
 	wasm, err := os.ReadFile(*wasmPath)
 	if err != nil {
 		t.Fatal(err)
@@ -53,6 +58,7 @@ func TestCoreModuleInGo(t *testing.T) {
 	if len(compiled.ImportedFunctions()) != 0 || len(compiled.ImportedMemories()) != 0 {
 		t.Fatal("the core module must not import host functions or memory")
 	}
+	verifyV1Exports(t, compiled)
 	guest, err := runtime.InstantiateModule(ctx, compiled, wazero.NewModuleConfig())
 	if err != nil {
 		t.Fatal(err)
@@ -108,7 +114,7 @@ func TestCoreModuleInGo(t *testing.T) {
 			t.Fatalf("config response: %v", response)
 		}
 	}
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		response := invoke("check", []byte(`{"source":"label = 'é🦀'; print(missing) # noqa\r\n","filename":"workflow.step.py","config":{"lint":{"select":["F821"]}}}`))
 		if string(response["ok"]) != "true" {
 			t.Fatalf("check failed: %v", response)
@@ -125,6 +131,47 @@ func TestCoreModuleInGo(t *testing.T) {
 		}
 		if len(diagnostics) != 1 || diagnostics[0].Code != "F821" || diagnostics[0].Location.Row != 1 || diagnostics[0].Location.Column != 21 {
 			t.Fatalf("unexpected diagnostic: %+v", diagnostics)
+		}
+	}
+}
+
+// Keep this fixture frozen: new operations may add exports, but v1 must stay callable.
+func verifyV1Exports(t *testing.T, compiled wazero.CompiledModule) {
+	t.Helper()
+	data, err := os.ReadFile("../fixtures/abi-v1.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var contract struct {
+		Exports map[string]struct {
+			Parameters []string `json:"parameters"`
+			Results    []string `json:"results"`
+		} `json:"exports"`
+	}
+	if err := json.Unmarshal(data, &contract); err != nil {
+		t.Fatal(err)
+	}
+	types := func(names []string) []api.ValueType {
+		result := make([]api.ValueType, len(names))
+		for i, name := range names {
+			switch name {
+			case "i32":
+				result[i] = api.ValueTypeI32
+			case "i64":
+				result[i] = api.ValueTypeI64
+			default:
+				t.Fatalf("unknown fixture type %q", name)
+			}
+		}
+		return result
+	}
+	for name, signature := range contract.Exports {
+		definition, ok := compiled.ExportedFunctions()[name]
+		if !ok {
+			t.Fatalf("missing frozen v1 export %q", name)
+		}
+		if !slices.Equal(definition.ParamTypes(), types(signature.Parameters)) || !slices.Equal(definition.ResultTypes(), types(signature.Results)) {
+			t.Fatalf("changed v1 signature for %q: %v -> %v", name, definition.ParamTypes(), definition.ResultTypes())
 		}
 	}
 }

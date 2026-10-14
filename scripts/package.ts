@@ -1,16 +1,19 @@
 import { gzipSync } from 'node:zlib';
+import { withMetadata } from './metadata.ts';
 import { defaultWasmPath, Ruff } from './wasm.ts';
 
 export async function packageWasm(path: string | URL): Promise<void> {
-	const wasm = await Deno.readFile(path);
-	const engine = new Ruff(await WebAssembly.compile(wasm));
+	const input = await Deno.readFile(path);
+	const engine = new Ruff(await WebAssembly.compile(input));
 	const metadata = engine.metadata();
+	const metadataJSON = JSON.stringify(metadata, null, 2) + '\n';
+	const wasm = withMetadata(input, new TextEncoder().encode(metadataJSON));
 	await Deno.mkdir('artifacts', { recursive: true });
 	await Deno.writeFile('artifacts/plugin.wasm', wasm);
 	// Node's gzip encoder uses a zero timestamp, making the asset reproducible.
 	const compressed = gzipSync(wasm, { level: 9 });
 	await Deno.writeFile('artifacts/plugin.wasm.gz', compressed);
-	await Deno.writeTextFile('artifacts/metadata.json', JSON.stringify(metadata, null, 2) + '\n');
+	await Deno.writeTextFile('artifacts/metadata.json', metadataJSON);
 	await Deno.writeTextFile('artifacts/schema.json', JSON.stringify(metadata.config_schema, null, 2) + '\n');
 	await Deno.copyFile('LICENSE', 'artifacts/LICENSE');
 	await Deno.copyFile('LICENSE-RUFF', 'artifacts/LICENSE-RUFF');

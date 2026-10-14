@@ -1,3 +1,7 @@
+import { requireInterface } from './contract.ts';
+import type { Metadata } from './contract.ts';
+export type { Metadata } from './contract.ts';
+
 interface Exports {
 	memory: WebAssembly.Memory;
 	abi_version: () => number;
@@ -19,18 +23,19 @@ export interface Diagnostic {
 	url: string | null;
 }
 
-export interface Response {
-	ok: boolean;
-	errors?: string[];
+export interface Failure {
+	ok: false;
+	errors: string[];
+}
+
+export interface CheckSuccess {
+	ok: true;
 	diagnostics: Diagnostic[];
 }
 
-export interface Metadata {
-	abi_version: number;
-	engine: { name: string; version: string };
-	capabilities: { noqa: boolean };
-	config_schema: { additionalProperties: boolean; properties: Record<string, unknown> };
-}
+export type CheckResponse = CheckSuccess | Failure;
+export type ConfigResponse = { ok: true; errors: string[] } | Failure;
+export type Response = CheckResponse | ConfigResponse;
 
 export class Ruff {
 	readonly #exports: Exports;
@@ -40,6 +45,13 @@ export class Ruff {
 		if (imports.length !== 0) throw new Error(`plugin must have no host imports: ${JSON.stringify(imports)}`);
 		this.#exports = new WebAssembly.Instance(module, {}).exports as unknown as Exports;
 		if (this.#exports.abi_version() !== 1) throw new Error('unsupported ABI version');
+		const metadata = this.metadata();
+		for (const name of ['check', 'validate_config', 'metadata'] as const) {
+			const entry = requireInterface(metadata, name, 1);
+			if (entry !== name || typeof this.#exports[entry] !== 'function') {
+				throw new Error(`unsupported ${name} v1 export: ${entry}`);
+			}
+		}
 	}
 
 	get memoryBytes(): number {
@@ -58,6 +70,8 @@ export class Ruff {
 		}
 	}
 
+	raw(operation: 'check', input: string): CheckResponse;
+	raw(operation: 'validate_config', input: string): ConfigResponse;
 	raw(operation: 'check' | 'validate_config', input: string): Response {
 		const bytes = new TextEncoder().encode(input);
 		const pointer = this.#exports.alloc(bytes.length);
@@ -70,11 +84,11 @@ export class Ruff {
 		}
 	}
 
-	check(source: string, config: unknown = {}, filename = 'workflow.step.py'): Response {
+	check(source: string, config: unknown = {}, filename = 'workflow.step.py'): CheckResponse {
 		return this.raw('check', JSON.stringify({ source, filename, config }));
 	}
 
-	validate(config: unknown): Response {
+	validate(config: unknown): ConfigResponse {
 		return this.raw('validate_config', JSON.stringify(config));
 	}
 
@@ -82,7 +96,7 @@ export class Ruff {
 		return this.#response(this.#exports.metadata());
 	}
 
-	invalidInput(pointer: number, length: number): Response {
+	invalidInput(pointer: number, length: number): CheckResponse {
 		return this.#response(this.#exports.check(pointer, length));
 	}
 }

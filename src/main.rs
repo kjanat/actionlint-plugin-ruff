@@ -1,4 +1,5 @@
-use std::io::{self, Read};
+use std::io::Read;
+use std::io::{self};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let operation = std::env::args().nth(1).unwrap_or_else(|| "check".into());

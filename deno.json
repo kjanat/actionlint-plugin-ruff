@@ -1,6 +1,38 @@
 {
 	"tasks": {
-		"test:wasm": "deno test --allow-read tests/wasm_test.ts",
-		"build": "deno run --allow-run=cargo,wasm-opt --allow-read --allow-write=artifacts scripts/build.ts"
+		"test:cli": "deno test -P tests/inspect_test.ts",
+		"test:wasm": "deno test -P tests/metadata_test.ts tests/wasm_test.ts",
+		"inspect": "deno run --permission-set=dreamcli scripts/inspect.ts",
+		"build": "deno run --permission-set=build scripts/build.ts"
+	},
+	"permissions": {
+		"dreamcli": {
+			"env": ["FORCE_COLOR", "NO_COLOR", "CI", "TERM", "NO_HYPERLINKS", "FORCE_HYPERLINKS"],
+			"read": true
+		},
+		"build": {
+			"read": true,
+			"run": ["cargo", "wasm-opt"],
+			"write": ["artifacts"]
+		}
+	},
+	"imports": {
+		"@kjanat/dreamcli": "jsr:@kjanat/dreamcli@^4",
+		"@kjanat/dreamcli/testkit": "jsr:@kjanat/dreamcli@^4/testkit",
+		"@std/assert": "jsr:@std/assert@^1.0.19"
+	},
+	"scopes": {
+		"./tests/": {
+			"@kjanat/dreamcli/testkit": "jsr:@kjanat/dreamcli@^4/testkit"
+		}
+	},
+	"test": {
+		"include": ["tests/*.ts"],
+		"exclude": ["tests/rust-host/target/"],
+		"permissions": "dreamcli"
+	},
+	"lint": {
+		"include": ["scripts/**/*.ts", "tests/*.ts"],
+		"exclude": ["tests/rust-host/target/"]
 	}
 }

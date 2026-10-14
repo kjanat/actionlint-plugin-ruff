@@ -1,0 +1,11 @@
+{
+	"abi_version": 1,
+	"exports": {
+		"abi_version": { "parameters": [], "results": ["i32"] },
+		"alloc": { "parameters": ["i32"], "results": ["i32"] },
+		"dealloc": { "parameters": ["i32"], "results": [] },
+		"check": { "parameters": ["i32", "i32"], "results": ["i64"] },
+		"validate_config": { "parameters": ["i32", "i32"], "results": ["i64"] },
+		"metadata": { "parameters": [], "results": ["i64"] }
+	}
+}
