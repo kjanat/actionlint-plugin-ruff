@@ -18,3 +18,9 @@ exts    = ["rs"]
 command       = "tombi format - --stdin-filename {{file_path}}"
 exts          = ["toml"]
 cacheKeyFiles = ["tombi.toml", "mise.toml"]
+
+[[exec.commands]]
+cwd           = "${configDir}/tests/wazero"
+command       = "gofmt -s"
+exts          = ["go"]
+cacheKeyFiles = ["go.mod"]

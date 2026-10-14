@@ -1,6 +1,6 @@
 module actionlint-plugin-ruff/wasm-test
 
-go 1.25.0
+go 1.27.2
 
 require github.com/tetratelabs/wazero v1.12.0
 

@@ -2936,6 +2936,119 @@
         }
       }
     },
+    "plugin:nix": {
+      "$id": "https://plugins.dprint.dev/kachick/nix/0.1.1/schema.json",
+      "$defs": {
+        "dprint-override": {
+          "type": "object",
+          "minProperties": 2,
+          "required": [
+            "files"
+          ],
+          "properties": {
+            "files": {
+              "description": "File patterns this override applies to.",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ]
+            },
+            "indentWidth": {
+              "$ref": "https://plugins.dprint.dev/kachick/nix/0.1.1/schema.json#/properties/indentWidth"
+            },
+            "lineWidth": {
+              "$ref": "https://plugins.dprint.dev/kachick/nix/0.1.1/schema.json#/properties/lineWidth"
+            }
+          },
+          "allOf": [
+            {
+              "properties": {
+                "files": true,
+                "indentWidth": true,
+                "lineWidth": true
+              },
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "type": "object",
+      "properties": {
+        "associations": {
+          "description": "File patterns to associate with this plugin, in addition to the file extensions and file names it matches by default. Use a negated glob (ex. \"!**/*.js\") to stop matching a default extension or file name.",
+          "anyOf": [
+            {
+              "description": "File patterns, one or more.",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "indentWidth": {
+          "default": 2,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "format": "uint8"
+        },
+        "lineWidth": {
+          "default": 100,
+          "type": "integer",
+          "minimum": 0,
+          "format": "uint32"
+        },
+        "locked": {
+          "description": "Whether this plugin configuration is locked against overrides from extending configurations.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "overrides": {
+          "description": "Plugin configuration overrides for specific file patterns.",
+          "anyOf": [
+            {
+              "description": "Overrides of a plugin's configuration, one or more.",
+              "anyOf": [
+                {
+                  "$ref": "https://plugins.dprint.dev/kachick/nix/0.1.1/schema.json#/$defs/dprint-override"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "https://plugins.dprint.dev/kachick/nix/0.1.1/schema.json#/$defs/dprint-override"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
     "plugin:pwsh": {
       "$id": "https://plugins.dprint.dev/kjanat/pwsh/0.2.0/schema.json",
       "$defs": {
@@ -3322,7 +3435,7 @@
       }
     },
     "plugin:ruff": {
-      "$id": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.9.1/schema.json",
+      "$id": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.11.0/schema.json",
       "$defs": {
         "dprint-override": {
           "type": "object",
@@ -3347,28 +3460,31 @@
               ]
             },
             "fixLintErrors": {
-              "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.9.1/schema.json#/properties/fixLintErrors"
+              "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.11.0/schema.json#/properties/fixLintErrors"
             },
             "indentStyle": {
-              "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.9.1/schema.json#/properties/indentStyle"
+              "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.11.0/schema.json#/properties/indentStyle"
             },
             "indentWidth": {
-              "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.9.1/schema.json#/properties/indentWidth"
+              "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.11.0/schema.json#/properties/indentWidth"
             },
             "lineEnding": {
-              "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.9.1/schema.json#/properties/lineEnding"
+              "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.11.0/schema.json#/properties/lineEnding"
             },
             "lineLength": {
-              "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.9.1/schema.json#/properties/lineLength"
+              "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.11.0/schema.json#/properties/lineLength"
             },
             "preview": {
-              "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.9.1/schema.json#/properties/preview"
+              "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.11.0/schema.json#/properties/preview"
             },
             "quoteStyle": {
-              "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.9.1/schema.json#/properties/quoteStyle"
+              "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.11.0/schema.json#/properties/quoteStyle"
             },
             "skipMagicTrailingComma": {
-              "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.9.1/schema.json#/properties/skipMagicTrailingComma"
+              "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.11.0/schema.json#/properties/skipMagicTrailingComma"
+            },
+            "targetVersion": {
+              "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.11.0/schema.json#/properties/targetVersion"
             }
           }
         }
@@ -3402,6 +3518,22 @@
           "default": {},
           "type": "object",
           "properties": {
+            "knownFirstParty": {
+              "description": "Module names or globs to treat as first-party.",
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "knownThirdParty": {
+              "description": "Module names or globs to treat as third-party.",
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "missingRequiredImport": {
               "description": "Whether to add missing required imports using Ruff's I002 rule.",
               "default": false,
@@ -3481,12 +3613,12 @@
               "description": "Overrides of a plugin's configuration, one or more.",
               "anyOf": [
                 {
-                  "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.9.1/schema.json#/$defs/dprint-override"
+                  "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.11.0/schema.json#/$defs/dprint-override"
                 },
                 {
                   "type": "array",
                   "items": {
-                    "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.9.1/schema.json#/$defs/dprint-override"
+                    "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.11.0/schema.json#/$defs/dprint-override"
                   }
                 }
               ]
@@ -3520,6 +3652,21 @@
           "description": "Ignore the magic trailing comma.",
           "default": false,
           "type": "boolean"
+        },
+        "targetVersion": {
+          "description": "The Python version to target (e.g., 'py314').",
+          "type": "string",
+          "enum": [
+            "py37",
+            "py38",
+            "py39",
+            "py310",
+            "py311",
+            "py312",
+            "py313",
+            "py314",
+            "py315"
+          ]
         }
       }
     },
@@ -7743,6 +7890,68 @@
         }
       ]
     },
+    "nix": {
+      "description": "The configuration of the nix plugin.",
+      "type": "object",
+      "properties": {
+        "associations": {
+          "description": "File patterns to associate with this plugin, in addition to the file extensions and file names it matches by default. Use a negated glob (ex. \"!**/*.js\") to stop matching a default extension or file name.",
+          "anyOf": [
+            {
+              "description": "File patterns, one or more.",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "locked": {
+          "description": "Whether this plugin configuration is locked against overrides from extending configurations.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "overrides": {
+          "description": "Plugin configuration overrides for specific file patterns.",
+          "anyOf": [
+            {
+              "description": "Overrides of a plugin's configuration, one or more.",
+              "anyOf": [
+                {
+                  "$ref": "https://plugins.dprint.dev/kachick/nix/0.1.1/schema.json#/$defs/dprint-override"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "https://plugins.dprint.dev/kachick/nix/0.1.1/schema.json#/$defs/dprint-override"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "https://plugins.dprint.dev/kachick/nix/0.1.1/schema.json"
+        }
+      ]
+    },
     "plugins": {
       "description": "Array of plugin URLs to format files.",
       "type": [
@@ -7855,12 +8064,12 @@
               "description": "Overrides of a plugin's configuration, one or more.",
               "anyOf": [
                 {
-                  "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.9.1/schema.json#/$defs/dprint-override"
+                  "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.11.0/schema.json#/$defs/dprint-override"
                 },
                 {
                   "type": "array",
                   "items": {
-                    "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.9.1/schema.json#/$defs/dprint-override"
+                    "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.11.0/schema.json#/$defs/dprint-override"
                   }
                 }
               ]
@@ -7873,7 +8082,7 @@
       },
       "allOf": [
         {
-          "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.9.1/schema.json"
+          "$ref": "https://plugins.dprint.dev/dprint/dprint-plugin-ruff/0.11.0/schema.json"
         }
       ]
     },

@@ -5,9 +5,8 @@ A Rust wrapper around Ruff for Python snippets in actionlint. It produces an emb
 environment, network, or external Ruff executable.
 
 Ruff owns option deserialization, rule selection, Python targets, parsing, and diagnostics. There are no handwritten
-rule
-catalogs or checked-in Ruff schemas. All Ruff crates are pinned to commit
-`5b27c1ccfaa230fb195855f5cf3404a21e3379cd` (0.17.0) in `Cargo.toml`, with resolved dependencies in `Cargo.lock`.
+rule catalogs or checked-in Ruff schemas. `Cargo.toml` uses Ruff's published crates.io packages: `ruff_linter` 0.17.0
+and companion crates 0.0.17. `Cargo.lock` records the resolved versions and package checksums.
 
 The actionlint host integration is a separate change. This repository supplies the engine,
 [host-independent contract](docs/plugin-contract.md#host-portability), tests, and generated artifacts.
@@ -16,8 +15,8 @@ plugins for a different host language.
 
 ## Build and verify
 
-Requirements: Rust 1.98 with the `wasm32-unknown-unknown` target (configured in `rust-toolchain.toml`), Deno 2, and
-Binaryen's `wasm-opt` version 133. `mise install` provides Deno, Binaryen, and the documentation tools.
+Requirements: Rust 1.98 with the `wasm32-unknown-unknown` target (configured in `rust-toolchain.toml`), Go 1.27.2,
+Deno 2, and Binaryen's `wasm-opt` version 133. `mise install` provides Go, Deno, Binaryen, and the documentation tools.
 
 ```sh
 cargo test --locked
@@ -33,6 +32,9 @@ cargo clippy --locked --manifest-path tests/rust-host/Cargo.toml --all-targets -
 `deno task build` compiles the library, optimizes it with Binaryen, verifies that the module has no imports, and
 extracts
 its schema through `metadata()`.
+
+The build may refresh `Cargo.lock` when dependency resolution requires it. Review and commit any lockfile changes
+with the dependency update; the Rust test and lint commands use `--locked`.
 
 The packaged module starts with an `actionlint.plugin` custom section containing the exact bytes of `metadata.json`,
 including project links, language/shell matching, conflict declarations, versioned interfaces, and the full config
