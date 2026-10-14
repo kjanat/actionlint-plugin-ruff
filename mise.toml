@@ -23,4 +23,8 @@ sources = ["deno.lock", "scripts/**/*.ts", "tests/*.ts"]
 run     = "deno install"
 
 [settings]
+experimental        = true
 minimum_release_age = "0s"
+
+[env]
+RUSTUP_AUTO_INSTALL = 1

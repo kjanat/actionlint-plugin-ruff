@@ -6,7 +6,7 @@ async function run(command: string, args: string[]): Promise<void> {
 	if (!status.success) throw new Error(`${command} exited ${status.code}`);
 }
 
-await run('cargo', ['build', '--locked', '--release', '--lib', '--target', 'wasm32-unknown-unknown']);
+await run('cargo', ['build', '--release', '--lib', '--target', 'wasm32-unknown-unknown']);
 await Deno.mkdir('artifacts', { recursive: true });
 const temporary = await Deno.makeTempFile({ dir: 'artifacts', suffix: '.wasm' });
 try {
