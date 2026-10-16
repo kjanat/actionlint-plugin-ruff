@@ -17,6 +17,10 @@ Deno.test('module instantiates without WASI or JavaScript imports', () => {
 	equal(readMetadata(wasm), metadata);
 	equal(metadata.abi_version, 1);
 	equal(metadata.engine.name, 'ruff');
+	equal(metadata.rules?.length, 1);
+	equal(metadata.rules?.[0].name, 'ruff');
+	equal(metadata.rules?.[0].subcategory, 'python');
+	equal(metadata.rules?.[0].options_schema, metadata.config_schema);
 	equal(metadata.capabilities.noqa, false);
 	equal(metadata.metadata_version, 1);
 	equal(metadata.id, 'actionlint-plugin-ruff');

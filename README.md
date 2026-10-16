@@ -135,3 +135,23 @@ Ruff's internal Rust APIs may require wrapper changes when updating the pinned r
 
 This project is MIT licensed. Ruff's MIT license and upstream attribution notices are included in `LICENSE-RUFF` and
 copied into every artifact bundle.
+
+## Current actionlint integration
+
+Build with `deno task build`, then select the artifact directly:
+
+```sh
+actionlint check --plugin /path/to/artifacts/plugin.wasm
+```
+
+The current host recognizes the core module ABI and replaces its default Ruff
+process with this engine. Workflow expression masking, script selection, YAML
+source mapping, severity and suppressions remain host responsibilities. No Python
+or native Ruff executable is needed for this backend. `tools.ruff` supplies engine
+configuration. An explicitly selected competing backend is an error.
+
+Metadata now includes the shared rule descriptor (category, subcategory, maturity,
+provider, help, documentation, fix availability and the Ruff-generated options
+schema). The core JSON ABI remains version 1; this engine does not claim to be a
+workflow-analyzer component. It can be adapted to a component transport without
+moving workflow semantics into Ruff.

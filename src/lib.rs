@@ -91,6 +91,15 @@ pub fn metadata() -> Value {
             "noqa": false, "filesystem": false, "fixes": false, "format": false,
             "position_encoding": "unicode", "max_input_bytes": MAX_INPUT_BYTES
         },
+        "rules": [{
+            "name": "ruff", "description": "Analyze embedded Python scripts with Ruff",
+            "category": "correctness", "subcategory": "python", "maturity": "stable",
+            "provider": env!("CARGO_PKG_NAME"), "recommended": true,
+            "explanation": "Ruff checks Python scripts after the host masks workflow expressions.",
+            "help": "Correct the reported Python code or configure tools.ruff.select and tools.ruff.ignore.",
+            "documentation_url": "https://docs.astral.sh/ruff/rules/",
+            "fix_availability": "none", "options_schema": schema
+        }],
         "config_schema": schema
     })
 }

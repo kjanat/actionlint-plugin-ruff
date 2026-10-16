@@ -4,7 +4,23 @@ export interface InterfaceDescriptor {
 	exclusive_group?: string;
 }
 
+export interface RuleDescriptor {
+	name: string;
+	description: string;
+	category: string;
+	subcategory: string;
+	maturity: string;
+	provider: string;
+	recommended: boolean;
+	explanation: string;
+	help: string;
+	documentation_url: string;
+	fix_availability: string;
+	options_schema: unknown;
+}
+
 export interface Metadata {
+	rules?: RuleDescriptor[];
 	abi_version: number;
 	plugin_version: string;
 	engine: { name: string; version: string };
