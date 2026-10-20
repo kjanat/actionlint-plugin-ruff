@@ -163,3 +163,23 @@ Metadata now includes the shared rule descriptor (category, subcategory, maturit
 provider, help, documentation, fix availability and the Ruff-generated options
 schema). The typed component exports only the script-engine role, not a workflow analyzer.
 The core JSON ABI remains version 1. Workflow semantics remain in actionlint.
+
+## Publication
+
+Push a signed `vX.Y.Z` tag after setting both package versions (`Cargo.toml` and
+`crates/component/Cargo.toml`) to `X.Y.Z` and refreshing `Cargo.lock`. Enable GitHub release immutability first.
+The Release workflow runs the full contract CI against that tag, then uploads the
+exact tested component, legacy core module, gzip variants, metadata, schema, and
+licenses. `SHA256SUMS` binds every package file. Existing differing assets are
+never replaced; an identical incomplete draft can resume.
+
+Only `plugin.component.wasm` is submitted to the registry. The workflow waits for
+`published`, then uses the host revision pinned in `tests/component/go.mod` to
+install the exact version into a fresh project, check its digest and identity,
+produce the expected F821 finding, and repeat checking with network proxies blocked.
+The publication and installation receipts are retained as workflow artifacts.
+A GitHub release alone, or a pending registry submission, is not publication success.
+
+Rerun the Release workflow on the same tag after a recoverable failure. No workflow
+creates tags or silently upgrades an existing release. Core artifacts remain
+available for hosts using the version-1 JSON ABI.

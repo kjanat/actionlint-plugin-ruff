@@ -3,6 +3,11 @@ name: Contract checks
 on:
   push: { branches: [master] }
   pull_request:
+  workflow_call:
+    outputs:
+      sha256:
+        description: SHA-256 of the tested packaged component
+        value: ${{ jobs.contract.outputs.sha256 }}
 
 permissions:
   contents: read
@@ -12,6 +17,7 @@ jobs:
     name: Rust, TypeScript, and Go host contracts
     runs-on: ubuntu-26.04
     timeout-minutes: 30
+    outputs: { sha256: "${{ steps.package.outputs.sha256 }}" }
     env: { TRUSTED: "${{ case(github.event_name == 'pull_request', false, true) }}" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -24,6 +30,12 @@ jobs:
             with: { deno-version: v2.x, cache: "${{ env.TRUSTED }}" }
           - name: Install pinned Rust toolchain and WASM target
             run: rustup toolchain install
+      - name: Check release version
+        if: github.ref_type == 'tag'
+        env: { RELEASE_TAG: "${{ github.ref_name }}" }
+        run: python3 -B scripts/release.py check-tag
+      - name: Release automation tests
+        run: python3 -B -m unittest discover -s scripts -p 'test_*.py'
       - name: Rust behavior and lint checks
         run: |
           cargo test --locked --workspace
@@ -48,3 +60,11 @@ jobs:
           cargo clippy --locked --manifest-path tests/rust-host/Cargo.toml --all-targets -- -D warnings
       - name: Formatting
         uses: kjanat/dprint-check@29c42153a7346f4d7315883ff7722cfe22cd510c # v3
+      - name: Record tested package digest
+        id: package
+        run: python3 -B scripts/release.py verify
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: actionlint-plugin-ruff
+          path: artifacts/
+          if-no-files-found: error
