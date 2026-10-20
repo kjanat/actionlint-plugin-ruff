@@ -2,7 +2,7 @@ import { arg, cli, CLIError, command } from '@kjanat/dreamcli';
 import { createDenoAdapter } from '@kjanat/dreamcli/runtime';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
-import { readMetadata } from './metadata.ts';
+import { readDiscoveryMetadata } from './metadata.ts';
 
 const defaultPath = fileURLToPath(new URL('../artifacts/plugin.wasm', import.meta.url));
 
@@ -18,7 +18,7 @@ export const inspectCommand = command('inspect')
 		try {
 			let bytes = await Deno.readFile(args.file);
 			if (bytes[0] === 0x1f && bytes[1] === 0x8b) bytes = new Uint8Array(gunzipSync(bytes));
-			out.json(readMetadata(bytes));
+			out.json(readDiscoveryMetadata(bytes));
 		} catch (cause) {
 			throw new CLIError(`Cannot inspect ${args.file}: ${cause instanceof Error ? cause.message : String(cause)}`, {
 				code: 'INVALID_PLUGIN',

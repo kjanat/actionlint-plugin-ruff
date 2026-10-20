@@ -3,8 +3,11 @@ import type { Metadata } from './contract.ts';
 export const METADATA_SECTION = 'actionlint.plugin';
 export const MAX_METADATA_BYTES = 1024 * 1024;
 const header = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]);
+const componentHeader = new Uint8Array([0, 97, 115, 109, 13, 0, 1, 0]);
 const encoder = new TextEncoder();
 const decoder = new TextDecoder('utf-8', { fatal: true });
+const object = (input: unknown): input is Record<string, unknown> =>
+	typeof input === 'object' && input !== null && !Array.isArray(input);
 
 function checkHeader(bytes: Uint8Array): void {
 	if (!header.every((value, i) => bytes[i] === value)) throw new Error('expected a core WASM v1 header');
@@ -43,8 +46,6 @@ function customName(bytes: Uint8Array, offset: number, end: number): [string, nu
 function decodeMetadata(bytes: Uint8Array): Metadata {
 	if (bytes.length > MAX_METADATA_BYTES) throw new Error('plugin metadata exceeds 1 MiB');
 	const value = JSON.parse(decoder.decode(bytes));
-	const object = (input: unknown): input is Record<string, unknown> =>
-		typeof input === 'object' && input !== null && !Array.isArray(input);
 	const version = (input: unknown): boolean => Number.isSafeInteger(input) && (input as number) >= 1;
 	if (
 		!object(value) || !Number.isSafeInteger(value.abi_version) || (value.abi_version as number) < 1
@@ -105,7 +106,7 @@ function decodeMetadata(bytes: Uint8Array): Metadata {
 
 /** Read only section bytes. A prefix ending after the metadata section is sufficient. */
 export function readMetadataBytes(wasm: Uint8Array): Uint8Array {
-	checkHeader(wasm);
+	if (!componentHeader.every((value, i) => wasm[i] === value)) checkHeader(wasm);
 	let offset = header.length;
 	while (offset < wasm.length) {
 		const id = wasm[offset++];
@@ -126,13 +127,47 @@ export function readMetadataBytes(wasm: Uint8Array): Uint8Array {
 
 /** Inspect metadata without compiling, instantiating, or executing guest code. */
 export function readMetadata(wasm: Uint8Array): Metadata {
+	checkHeader(wasm);
 	return decodeMetadata(readMetadataBytes(wasm));
+}
+
+/** Inspect either supported artifact without imposing core ABI fields on components. */
+export function readDiscoveryMetadata(wasm: Uint8Array): Metadata | Record<string, unknown> {
+	if (componentHeader.every((value, i) => wasm[i] === value)) {
+		return decodeComponentMetadata(readMetadataBytes(wasm));
+	}
+	return readMetadata(wasm);
 }
 
 /** Put one metadata section first, replacing any earlier copy while preserving other sections. */
 export function withMetadata(wasm: Uint8Array, metadata: Uint8Array): Uint8Array {
 	checkHeader(wasm);
 	decodeMetadata(metadata);
+	return withMetadataSection(wasm, metadata);
+}
+
+/** Add typed script-engine discovery metadata to the outer component only. */
+export function withComponentMetadata(wasm: Uint8Array, metadata: Uint8Array): Uint8Array {
+	if (!componentHeader.every((value, i) => wasm[i] === value)) throw new Error('expected a WASM component header');
+	decodeComponentMetadata(metadata);
+	return withMetadataSection(wasm, metadata);
+}
+
+function decodeComponentMetadata(metadata: Uint8Array): Record<string, unknown> {
+	if (metadata.length > MAX_METADATA_BYTES) throw new Error('plugin metadata exceeds 1 MiB');
+	const value: unknown = JSON.parse(decoder.decode(metadata));
+	if (
+		!object(value)
+		|| value.transport !== 'wasm-component'
+		|| value.interface !== 'kjanat:actionlint/script-engine@0.1.0'
+		|| typeof value.contract_sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(value.contract_sha256)
+		|| typeof value.id !== 'string' || value.id.length === 0
+		|| typeof value.plugin_version !== 'string' || value.plugin_version.length === 0
+	) throw new Error('invalid script-engine component metadata');
+	return value;
+}
+
+function withMetadataSection(wasm: Uint8Array, metadata: Uint8Array): Uint8Array {
 	const name = encoder.encode(METADATA_SECTION);
 	const nameLength = encodeU32(name.length);
 	const sectionHeader = new Uint8Array([
@@ -140,7 +175,7 @@ export function withMetadata(wasm: Uint8Array, metadata: Uint8Array): Uint8Array
 		...encodeU32(nameLength.length + name.length + metadata.length),
 		...nameLength,
 	]);
-	const chunks = [header, sectionHeader, name, metadata];
+	const chunks = [wasm.subarray(0, header.length), sectionHeader, name, metadata];
 	let offset = header.length;
 	while (offset < wasm.length) {
 		const sectionStart = offset;

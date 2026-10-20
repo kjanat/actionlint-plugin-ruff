@@ -1,3 +1,4 @@
+import { packageComponent } from './component.ts';
 import { packageWasm } from './package.ts';
 import { defaultWasmPath } from './wasm.ts';
 
@@ -6,7 +7,7 @@ async function run(command: string, args: string[]): Promise<void> {
 	if (!status.success) throw new Error(`${command} exited ${status.code}`);
 }
 
-await run('cargo', ['build', '--release', '--lib', '--target', 'wasm32-unknown-unknown']);
+await run('cargo', ['build', '--locked', '--release', '--lib', '--target', 'wasm32-unknown-unknown']);
 await Deno.mkdir('artifacts', { recursive: true });
 const temporary = await Deno.makeTempFile({ dir: 'artifacts', suffix: '.wasm' });
 try {
@@ -34,3 +35,14 @@ try {
 }
 // Derive metadata and compressed bytes from the final, import-free module.
 await packageWasm('artifacts/plugin.wasm');
+await run('cargo', [
+	'build',
+	'--locked',
+	'--release',
+	'--lib',
+	'--package',
+	'actionlint-plugin-ruff-component',
+	'--target',
+	'wasm32-unknown-unknown',
+]);
+await packageComponent();

@@ -67,9 +67,9 @@ pub(crate) fn settings(mut config: Value) -> Result<Settings, String> {
 }
 
 #[derive(Serialize)]
-pub(crate) struct Position {
-    row: usize,
-    column: usize,
+pub struct Position {
+    pub row: usize,
+    pub column: usize,
 }
 
 impl From<SourceLocation> for Position {
@@ -82,15 +82,15 @@ impl From<SourceLocation> for Position {
 }
 
 #[derive(Serialize)]
-pub(crate) struct Diagnostic {
-    filename: String,
-    code: String,
-    name: String,
-    severity: ruff_db::diagnostic::Severity,
-    message: String,
-    location: Position,
-    end_location: Position,
-    url: Option<String>,
+pub struct Diagnostic {
+    pub filename: String,
+    pub code: String,
+    pub name: String,
+    pub severity: ruff_db::diagnostic::Severity,
+    pub message: String,
+    pub location: Position,
+    pub end_location: Position,
+    pub url: Option<String>,
 }
 
 pub(crate) fn check(request: CheckRequest) -> Result<Vec<Diagnostic>, String> {

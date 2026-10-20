@@ -1,16 +1,23 @@
 //! Ruff owns Python analysis and option validation; actionlint owns script selection and YAML mapping.
 
 mod engine;
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", target_os = "unknown", feature = "core-abi"))]
 mod wasm;
 
 use serde::Deserialize;
+use serde::Serialize;
 use serde_json::Value;
 use serde_json::json;
 
 pub const ABI_VERSION: u32 = 1;
 pub const METADATA_VERSION: u32 = 1;
 pub const MAX_INPUT_BYTES: usize = 8 * 1024 * 1024;
+pub const PLUGIN_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const ENGINE_VERSION: &str = ruff_linter::VERSION;
+
+pub use engine::Diagnostic;
+pub use engine::Position;
+pub use ruff_db::diagnostic::Severity;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -38,7 +45,7 @@ fn decode<T: serde::de::DeserializeOwned>(input: &[u8]) -> Result<T, String> {
 
 /// Check one already-sanitized Python snippet. Coordinates are one-based Unicode characters.
 pub fn check(input: &[u8]) -> Value {
-    let result = decode::<CheckRequest>(input).and_then(engine::check);
+    let result = decode::<CheckRequest>(input).and_then(check_request);
     match result {
         Ok(diagnostics) => json!({"ok": true, "diagnostics": diagnostics}),
         Err(error) => failure(error),
@@ -47,14 +54,60 @@ pub fn check(input: &[u8]) -> Value {
 
 /// Validate a Ruff options object with exactly the same path used by `check`.
 pub fn validate_config(input: &[u8]) -> Value {
-    match decode::<Value>(input).and_then(engine::settings) {
+    match decode::<Value>(input).and_then(validate_options) {
         Ok(_) => json!({"ok": true, "errors": []}),
         Err(error) => failure(error),
     }
 }
 
-/// Generate metadata and schema from the linked Ruff crates, without checked-in catalogs.
-pub fn metadata() -> Value {
+/// Analyze a typed request, shared by the core JSON and Component Model adapters.
+pub fn check_request(request: CheckRequest) -> Result<Vec<Diagnostic>, String> {
+    engine::check(request)
+}
+
+/// Validate decoded engine options using the same path as analysis.
+pub fn validate_options(config: Value) -> Result<(), String> {
+    engine::settings(config).map(|_| ())
+}
+
+/// Shared rule metadata. Transport adapters only encode this descriptor.
+#[derive(Serialize)]
+pub struct RuleDescriptor {
+    pub name: String,
+    pub description: String,
+    pub category: String,
+    pub subcategory: String,
+    pub maturity: String,
+    pub provider: String,
+    pub recommended: bool,
+    pub explanation: String,
+    pub help: String,
+    pub documentation_url: String,
+    pub fix_availability: String,
+    pub options_schema: Value,
+}
+
+pub fn rule_descriptor() -> RuleDescriptor {
+    RuleDescriptor {
+        name: "ruff".into(),
+        description: "Analyze embedded Python scripts with Ruff".into(),
+        category: "correctness".into(),
+        subcategory: "python".into(),
+        maturity: "stable".into(),
+        provider: env!("CARGO_PKG_NAME").into(),
+        recommended: true,
+        explanation: "Ruff checks Python scripts after the host masks workflow expressions.".into(),
+        help:
+            "Correct the reported Python code or configure tools.ruff.select and tools.ruff.ignore."
+                .into(),
+        documentation_url: "https://docs.astral.sh/ruff/rules/".into(),
+        fix_availability: "none".into(),
+        options_schema: config_schema(),
+    }
+}
+
+/// Generate the supported option schema from the linked Ruff crates.
+pub fn config_schema() -> Value {
     let mut schema = serde_json::to_value(schemars::schema_for!(ruff_workspace::options::Options))
         .expect("Ruff schema is JSON serializable");
     // Runtime and editor completion expose the same offline subset of Ruff options.
@@ -62,6 +115,13 @@ pub fn metadata() -> Value {
         schema["properties"].as_object_mut().unwrap().remove(*key);
     }
     schema["properties"]["target-version"]["default"] = json!("py314");
+    schema
+}
+
+/// Generate metadata and schema from the linked Ruff crates, without checked-in catalogs.
+pub fn metadata() -> Value {
+    let rule = rule_descriptor();
+    let schema = rule.options_schema.clone();
     json!({
         "metadata_version": METADATA_VERSION,
         "abi_version": ABI_VERSION,
@@ -91,15 +151,7 @@ pub fn metadata() -> Value {
             "noqa": false, "filesystem": false, "fixes": false, "format": false,
             "position_encoding": "unicode", "max_input_bytes": MAX_INPUT_BYTES
         },
-        "rules": [{
-            "name": "ruff", "description": "Analyze embedded Python scripts with Ruff",
-            "category": "correctness", "subcategory": "python", "maturity": "stable",
-            "provider": env!("CARGO_PKG_NAME"), "recommended": true,
-            "explanation": "Ruff checks Python scripts after the host masks workflow expressions.",
-            "help": "Correct the reported Python code or configure tools.ruff.select and tools.ruff.ignore.",
-            "documentation_url": "https://docs.astral.sh/ruff/rules/",
-            "fix_availability": "none", "options_schema": schema
-        }],
+        "rules": [rule],
         "config_schema": schema
     })
 }

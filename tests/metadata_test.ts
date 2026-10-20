@@ -1,6 +1,13 @@
 import { deepStrictEqual as equal, throws } from 'node:assert/strict';
 import { requireInterface, resolveInterface } from '../scripts/contract.ts';
-import { MAX_METADATA_BYTES, readMetadata, readMetadataBytes, withMetadata } from '../scripts/metadata.ts';
+import {
+	MAX_METADATA_BYTES,
+	readDiscoveryMetadata,
+	readMetadata,
+	readMetadataBytes,
+	withComponentMetadata,
+	withMetadata,
+} from '../scripts/metadata.ts';
 
 const header = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]);
 const fixture = {
@@ -11,6 +18,50 @@ const fixture = {
 	config_schema: { type: 'object', properties: { lint: { type: 'object' } } },
 };
 const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value) + '\n');
+
+Deno.test('component metadata keeps its typed interface separate from the core ABI', () => {
+	const component = new Uint8Array([0, 97, 115, 109, 13, 0, 1, 0]);
+	const metadata = {
+		id: 'actionlint-plugin-ruff',
+		plugin_version: '0.1.0',
+		transport: 'wasm-component',
+		interface: 'kjanat:actionlint/script-engine@0.1.0',
+		contract_sha256: 'a'.repeat(64),
+	};
+	const packaged = withComponentMetadata(component, encode(metadata));
+	equal(readDiscoveryMetadata(packaged), metadata);
+	equal(readMetadataBytes(packaged), encode(metadata));
+	equal(withComponentMetadata(packaged, encode(metadata)), packaged);
+	throws(() => readMetadata(packaged), /core WASM/);
+	throws(() => withComponentMetadata(header, encode(metadata)), /component header/);
+	throws(
+		() => withComponentMetadata(component, encode({ ...metadata, contract_sha256: 'wrong' })),
+		/component metadata/,
+	);
+	throws(() => withComponentMetadata(component, encode(fixture)), /component metadata/);
+});
+
+Deno.test('packaged component metadata matches its sidecar and preserves the legacy artifact', async () => {
+	const wasm = await Deno.readFile(new URL('../artifacts/plugin.component.wasm', import.meta.url));
+	const metadata = await Deno.readFile(new URL('../artifacts/component.metadata.json', import.meta.url));
+	equal(readMetadataBytes(wasm), metadata);
+	const parsed = readDiscoveryMetadata(wasm);
+	equal(parsed, JSON.parse(new TextDecoder().decode(metadata)));
+	const legacy = await Deno.readFile(new URL('../artifacts/plugin.wasm', import.meta.url));
+	equal(readMetadata(legacy).transport, 'wasm-core-json');
+});
+
+Deno.test('typed guest has no host imports or legacy core ABI exports', async () => {
+	const bytes = await Deno.readFile(
+		new URL('../target/wasm32-unknown-unknown/release/actionlint_plugin_ruff_component.wasm', import.meta.url),
+	);
+	const module = await WebAssembly.compile(bytes);
+	equal(WebAssembly.Module.imports(module), []);
+	const names = WebAssembly.Module.exports(module).map((item) => item.name);
+	for (const name of ['check', 'validate_config', 'metadata', 'alloc', 'dealloc']) {
+		equal(names.includes(name), false, `typed guest exported legacy ${name}`);
+	}
+});
 
 Deno.test('interface negotiation preserves v1 alongside newer and unknown capabilities', () => {
 	const metadata = readMetadata(withMetadata(

@@ -4,6 +4,31 @@ This is the implemented contract for `actionlint-plugin-ruff`.
 Actionlint owns shell selection, expression sanitization, source mapping, suppression, scheduling, and cancellation.
 Ruff owns Python analysis and configuration validation. The plugin receives one already-sanitized snippet per call.
 
+## Typed script-engine component
+
+New integrations use `artifacts/plugin.component.wasm` or its gzip form. The component exports
+`kjanat:actionlint/script-engine@0.1.0`, defined in
+[`crates/component/wit/script-engine.wit`](../crates/component/wit/script-engine.wit).
+
+`describe()` returns typed plugin/engine identity, supported shells and one rule descriptor.
+`validate-config()` accepts the engine's JSON options object and returns a typed success/error result.
+`check()` accepts typed source, virtual filename and JSON configuration, returning typed diagnostics and an
+independent optional incomplete-analysis error. Positions count one-based Unicode scalar values and end
+positions are exclusive. Findings, errors, severity, and coordinates are not transported as JSON blobs.
+
+Static `component.metadata.json` is embedded in the outer `actionlint.plugin` section. It records
+`transport: "wasm-component"`, the interface name, the SHA-256 of LF-normalized WIT, the same plugin identity,
+engine version, rules and options schema returned by `describe()`. Packaging includes both raw and gzip
+digests in `SHA256SUMS`; the public host verifies metadata against the executable interface and descriptor.
+
+The guest targets `wasm32-unknown-unknown` and is componentized with the Cargo-locked `wit-component`
+encoder. It has no host imports: filesystem, credentials, clocks and network services are unavailable.
+The existing clock facade traps if analysis unexpectedly requests time.
+The public-loader tests check both exact packaged variants, typed configuration errors, Unicode/CRLF
+coordinates and workflow expression masking/source mapping. They also compare vendored WIT to the pinned host.
+
+The following core ABI remains supported independently for existing consumers.
+
 ## Core module ABI, version 1
 
 The packaged module is `artifacts/plugin.wasm`, targeting `wasm32-unknown-unknown`. It requires no host imports or WASI.
@@ -85,10 +110,10 @@ signature fixture as the Go test. It verifies static prefix discovery, metadata 
 Unicode checks, input/output ownership, and fuel-based interruption under a host memory limit. Its runtime dependency is
 kept out of the guest build.
 
-A future Rust rewrite may use a different compatible core runtime without changing the contract. If typed WIT/component
-bindings or a native transport are added later, define and version that binding separately, retain the core v1 artifact
-for existing hosts, and adapt to the same versioned operation data contracts wherever semantics stay unchanged. A core
-module does not become a component by relabeling metadata. Runtime-specific compilation caches stay local to each host;
+A future Rust rewrite may use a different compatible core runtime without changing the contract. The typed WIT
+component is separately versioned and keeps the core v1 artifact available for existing hosts. Both adapters call
+the same typed Rust analysis functions. A core module does not become a component by relabeling metadata.
+Runtime-specific compilation caches stay local to each host;
 redistributable plugins remain portable artifacts. Native Rust linking may be offered separately, but Rust ABI/trait
 compatibility is not a replacement for this serialized boundary.
 
@@ -312,6 +337,5 @@ interpret `${{ }}`, workflow YAML, shell strings, or actionlint suppressions. Th
 interpreter-derived targets. Package discovery is disabled, so checks requiring package roots lack repository context.
 
 The native utility is for development and consumes the same JSON requests. It does not implement the previous generic
-workflow/snippet-batch process protocol. The current actionlint checkout still uses its executable Ruff adapter until
-the
-Go integration is implemented.
+workflow/snippet-batch process protocol. Actionlint's public loader supports the legacy core module and the typed
+script-engine component; neither backend requires a native Ruff executable.

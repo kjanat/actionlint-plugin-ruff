@@ -10,6 +10,11 @@ repository    = "https://github.com/kjanat/actionlint-plugin-ruff"
 license       = "MIT"
 publish       = false
 
+[workspace]
+resolver = "3"
+members  = ["crates/component"]
+exclude  = ["tests/rust-host"]
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
@@ -28,6 +33,10 @@ ruff_workspace      = { version = "0.0.17", features = ["schemars"] }
 schemars   = { version = "1.2.3" }
 serde      = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
+
+[features]
+default  = ["core-abi"]
+core-abi = []
 
 [patch.crates-io]
 # Ruff's browser clock pulls in JS bindings even though linting never uses it.

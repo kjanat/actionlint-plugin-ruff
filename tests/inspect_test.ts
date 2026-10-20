@@ -35,6 +35,16 @@ Deno.test('inspect accepts explicit raw and gzip assets, including JSON mode', a
 	}
 });
 
+Deno.test('inspect reads typed component metadata from raw and gzip assets', async () => {
+	const expected = JSON.parse(await Deno.readTextFile(asset('component.metadata.json')));
+	for (const name of ['plugin.component.wasm', 'plugin.component.wasm.gz']) {
+		const result = await runCommand(inspectCommand, [asset(name)], options);
+		equal(result.exitCode, 0);
+		equal(result.stderr, []);
+		equal(JSON.parse(result.stdout.join('\n')), expected);
+	}
+});
+
 Deno.test('inspect help explains the optional file without reading it', async () => {
 	const result = await inspectCli.execute(['--help'], {
 		stat: () => {
