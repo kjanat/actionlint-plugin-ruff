@@ -140,4 +140,5 @@ pub fn metadata() -> Value {
     value
 }
 
+#[cfg(target_arch = "wasm32")]
 export!(Plugin);
