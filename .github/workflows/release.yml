@@ -39,7 +39,7 @@ jobs:
         run: python3 -B scripts/release.py publish
       - name: Submit immutable release to the registry
         id: submit
-        uses: kjanat/actionlint-plugin-registry@ada8cb5e888a1b9aa22143e9ad64c914e4510fbc
+        uses: kjanat/actionlint-registry@ada8cb5e888a1b9aa22143e9ad64c914e4510fbc
         with:
           asset: plugin.component.wasm
           sha256: ${{ needs.build.outputs.sha256 }}
