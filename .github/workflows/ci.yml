@@ -12,7 +12,7 @@ jobs:
     name: Rust, TypeScript, and Go host contracts
     runs-on: ubuntu-26.04
     timeout-minutes: 30
-    env: { TRUSTED: "${{ case(github.event.type == 'pull_request', false, true) }}" }
+    env: { TRUSTED: "${{ case(github.event_name == 'pull_request', false, true) }}" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
