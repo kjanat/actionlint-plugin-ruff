@@ -3,7 +3,7 @@ module actionlint-plugin-ruff/wasm-test
 go 1.27.2
 
 require (
-	actionlint.kjanat.dev v1.17.1-0.20261020081152-79a0ae6c4eb7
+	actionlint.kjanat.dev/v2 v2.0.0-20261020183608-73105c6dc5ce
 	github.com/tetratelabs/wazero v1.12.0
 )
 

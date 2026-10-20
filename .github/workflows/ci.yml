@@ -68,3 +68,32 @@ jobs:
           name: actionlint-plugin-ruff
           path: artifacts/
           if-no-files-found: error
+
+  hosts:
+    name: Packaged engines on ${{ matrix.os }}
+    needs: contract
+    strategy:
+      fail-fast: false
+      matrix: { os: [macos-latest, windows-latest] }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: actionlint-plugin-ruff
+          path: artifacts
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: tests/component/go.mod
+          cache-dependency-path: |
+            tests/component/go.sum
+            tests/wazero/go.sum
+      - name: Verify the exact tested package
+        env: { EXPECTED_SHA256: "${{ needs.contract.outputs.sha256 }}" }
+        run: python3 -B -c "import os, sys; sys.path.insert(0, 'scripts'); import release; print(release.verify(expected=os.environ['EXPECTED_SHA256']))"
+      - name: Core engine with default limits through the public host
+        run: go -C tests/wazero test -mod=readonly -v ./...
+      - name: Typed script-engine component through the public host
+        run: go -C tests/component test -mod=readonly -v ./...

@@ -12,6 +12,8 @@ and companion crates 0.0.17. `Cargo.lock` records the resolved versions and pack
 The public actionlint loader checks the actual packaged artifacts. The core module also runs through independent
 Go, Rust, and TypeScript hosts. The component uses the vendored [WIT interface](crates/component/wit/script-engine.wit);
 changing host language does not require rebuilding either portable artifact.
+CI runs both packaged transports through actionlint on Linux, macOS, and Windows using the same artifact bytes,
+including cold loading with the host's default limits.
 
 ## Build and verify
 
@@ -152,8 +154,8 @@ Build with `deno task build`, then select the artifact directly:
 actionlint check --plugin /path/to/artifacts/plugin.component.wasm
 ```
 
-The host recognizes the typed script-engine role and replaces its default Ruff
-process with this engine. Older hosts can continue loading `plugin.wasm` through the core ABI.
+The host recognizes the typed script-engine role and selects this engine as its Ruff backend.
+Older hosts can continue loading `plugin.wasm` through the core ABI.
 Workflow expression masking, script selection, YAML
 source mapping, severity and suppressions remain host responsibilities. No Python
 or native Ruff executable is needed for this backend. `tools.ruff` supplies engine

@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/analysis"
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/config"
-	"actionlint.kjanat.dev/plugin"
+	"actionlint.kjanat.dev/v2/analysis"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/config"
+	"actionlint.kjanat.dev/v2/plugin"
 )
 
 func TestPackagedScriptEngineComponent(t *testing.T) {
@@ -159,7 +159,7 @@ func checkWorkflow(t *testing.T, ctx context.Context, backend analyzer.ScriptBac
 
 func TestVendoredWITMatchesPinnedHost(t *testing.T) {
 	// Resolve the exact published host source selected by this module.
-	command := exec.CommandContext(t.Context(), "go", "list", "-m", "-f", "{{.Dir}}", "actionlint.kjanat.dev")
+	command := exec.CommandContext(t.Context(), "go", "list", "-m", "-f", "{{.Dir}}", "actionlint.kjanat.dev/v2")
 	output, err := command.Output()
 	if err != nil {
 		t.Fatalf("resolve pinned host source: %v", err)

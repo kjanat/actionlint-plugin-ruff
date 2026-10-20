@@ -1,5 +1,5 @@
-actionlint.kjanat.dev v1.17.1-0.20261020081152-79a0ae6c4eb7 h1:IM3ppRVQFfmATlUZo3N251qsY1dYTL06Wnix5lynqSo=
-actionlint.kjanat.dev v1.17.1-0.20261020081152-79a0ae6c4eb7/go.mod h1:rT3BxMFbcausmMH24gsIpHTf1rzrD1dqa2d3kS+ZJOQ=
+actionlint.kjanat.dev/v2 v2.0.0-20261020183608-73105c6dc5ce h1:hpf2PQaAJtff9CBxW/oRUmZvu2h/4J9aKMeP0K98EHM=
+actionlint.kjanat.dev/v2 v2.0.0-20261020183608-73105c6dc5ce/go.mod h1:oGMLoPbME8jH0xTElpnAc/0lhZbaYg4sx28SQPMxnmw=
 github.com/bmatcuk/doublestar/v4 v4.10.3 h1:1UIv1+fqH3++ViVkpnaPTB+Pi1UHycnPFAq14zgK+gI=
 github.com/bmatcuk/doublestar/v4 v4.10.3/go.mod h1:xBQ8jztBU6kakFMg+8WGxn0c6z1fTSPVIjEY1Wr7jzc=
 github.com/clipperhouse/uax29/v2 v2.7.0 h1:+gs4oBZ2gPfVrKPthwbMzWZDaAFPGYK72F0NJv2v7Vk=

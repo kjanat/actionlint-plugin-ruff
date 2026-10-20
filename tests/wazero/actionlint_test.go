@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/analysis"
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/config"
-	"actionlint.kjanat.dev/plugin"
+	"actionlint.kjanat.dev/v2/analysis"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/config"
+	"actionlint.kjanat.dev/v2/plugin"
 )
 
 // The standalone wazero test exercises the frozen wire ABI independently.
