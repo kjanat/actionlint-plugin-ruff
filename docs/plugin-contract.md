@@ -1,367 +1,341 @@
-# actionlint external checker contract
+# Embedded Ruff WASM contract
 
-Reader: actionlint maintainer replacing the pyflakes hook with a generic checker interface, and the author of
-`actionlint-plugin-ruff`.
+This is the implemented contract for `actionlint-plugin-ruff`.
+Actionlint owns shell selection, expression sanitization, source mapping, suppression, scheduling, and cancellation.
+Ruff owns Python analysis and configuration validation. The plugin receives one already-sanitized snippet per call.
 
-Ruff facts come from `astral-sh/ruff` at [`5b27c1ccfaa230fb195855f5cf3404a21e3379cd`] (0.17.0). actionlint facts come
-from `kjanat/actionlint` branch `fix/actions-expression-semantics` at [`6567fe7a`] plus its uncommitted worktree.
+## Typed script-engine component
 
-## 1. What ruff offers
+New integrations use `artifacts/plugin.component.wasm` or its gzip form. The component exports
+`kjanat:actionlint/script-engine@0.1.0`, defined in
+[`crates/component/wit/script-engine.wit`](../crates/component/wit/script-engine.wit).
 
-| Surface             | Transport                 | Fit for actionlint              |
-| ------------------- | ------------------------- | ------------------------------- |
-| `ruff check -`      | process, stdin → stdout   | yes                             |
-| `ruff server`       | LSP over stdio            | only for an LSP-mode actionlint |
-| `ruff_wasm`         | npm package, wasm-bindgen | no, needs JS glue               |
-| `ruff_linter` crate | Rust link                 | no, actionlint is Go            |
+`describe()` returns typed plugin/engine identity, supported shells and one rule descriptor.
+`validate-config()` accepts the engine's JSON options object and returns a typed success/error result.
+`check()` accepts typed source, virtual filename and JSON configuration, returning typed diagnostics and an
+independent optional incomplete-analysis error. Positions count one-based Unicode scalar values and end
+positions are exclusive. Findings, errors, severity, and coordinates are not transported as JSON blobs.
 
-### 1.1 `ruff check` CLI
+Static `component.metadata.json` is embedded in the outer `actionlint.plugin` section. It records
+`transport: "wasm-component"`, the interface name, the SHA-256 of LF-normalized WIT, the same plugin identity,
+engine version, rules and options schema returned by `describe()`. Packaging includes both raw and gzip
+digests in `SHA256SUMS`; the public host verifies metadata against the executable interface and descriptor.
 
-Invocation the adapter needs:
+The guest targets `wasm32-unknown-unknown` and is componentized with the Cargo-locked `wit-component`
+encoder. It has no host imports: filesystem, credentials, clocks and network services are unavailable.
+The existing clock facade traps if analysis unexpectedly requests time.
+The public-loader tests check both exact packaged variants, typed configuration errors, Unicode/CRLF
+coordinates and workflow expression masking/source mapping. They also compare vendored WIT to the pinned host.
 
-```sh
-ruff check --isolated --no-cache --output-format json --exit-zero \
-  --select F --target-version py3XX --stdin-filename <virtual path> -
+The following core ABI remains supported independently for existing consumers.
+
+## Core module ABI, version 1
+
+The packaged module is `artifacts/plugin.wasm`, targeting `wasm32-unknown-unknown`. It requires no host imports or WASI.
+Requests and responses are UTF-8 JSON bytes in linear memory.
+
+For embedding in any host executable, use the reproducible `artifacts/plugin.wasm.gz` asset and decompress it once
+before passing the bytes to a compatible core WASM runtime. It restores the exact same core module and preserves this
+ABI.
+Go can use `compress/gzip`; a Rust host can use its preferred gzip implementation.
+
+| Export            | Signature                            | Meaning                                                                        |
+| ----------------- | ------------------------------------ | ------------------------------------------------------------------------------ |
+| `memory`          | linear memory                        | Input and output UTF-8 JSON bytes                                              |
+| `abi_version`     | `() -> i32`                          | Returns `1`                                                                    |
+| `alloc`           | `(length: i32) -> i32`               | Returns a zeroed input buffer pointer, or `0` if length is zero or above 8 MiB |
+| `dealloc`         | `(pointer: i32) -> ()`               | Releases an owned buffer; unknown pointers are ignored                         |
+| `check`           | `(pointer: i32, length: i32) -> i64` | Checks a JSON snippet request                                                  |
+| `validate_config` | `(pointer: i32, length: i32) -> i64` | Validates a JSON Ruff options object                                           |
+| `metadata`        | `() -> i64`                          | Returns engine version, capabilities, and generated config schema              |
+
+An `i64` result packs the output pointer in the high 32 bits and byte length in the low 32 bits:
+
+```go
+pointer := uint32(result >> 32)
+length := uint32(result)
 ```
 
-- `-` plus `--stdin-filename` reads stdin. `--stdin-filename` alone also forces stdin and ignores file args with a
-  warning (`crates/ruff/src/lib.rs` `is_stdin`).
-- `--stdin-filename` resolves config discovery, exclusion, package root and the `filename` field. Ruff absolutizes it
-  against cwd. The file does not have to exist.
-- `--isolated` skips every `pyproject.toml` and `ruff.toml`. Without it ruff walks up from the stdin filename and
-  applies the repo config: `select`, `ignore`, `per-file-ignores`, `target-version`, `preview`. A repo with `select =
-  ["ALL"]` then lints workflow snippets with every rule. `exclude` patterns only apply to stdin when the config sets
-  `force-exclude = true` (`crates/ruff/src/commands/check_stdin.rs`, default `false` in
-  `crates/ruff_workspace/src/settings.rs`); a match returns zero diagnostics with exit 0.
-- `--config '<KEY> = <VALUE>'` appends inline TOML overrides, repeatable, highest precedence.
-- `--select`, `--extend-select`, `--ignore` take codes or prefixes. `F` selects the whole Pyflakes set.
-- `--ignore-noqa` disables `# noqa` honouring.
-- `--preview` changes the JSON: `code` becomes nullable and `severity` becomes real instead of a constant `"error"`.
-- `--extension ext:python` maps unknown extensions. Give the virtual path a `.py` suffix and this is unnecessary.
-- Env: `RUFF_OUTPUT_FORMAT`, `RUFF_NO_CACHE`, `RUFF_CACHE_DIR`, `RUFF_OUTPUT_FILE`. Pass flags explicitly so the user's
-  env cannot change the output shape.
-- `@argfile` expands to a file list, useful when linting many temp files in one process.
+The equivalent Rust unpacking preserves the signed WASM result's bits:
 
-Exit codes (`crates/ruff/src/lib.rs`):
+```rust
+let bits = result as u64;
+let pointer = (bits >> 32) as u32;
+let length = bits as u32;
+```
 
-| code | meaning                              |
-| ---- | ------------------------------------ |
-| 0    | no violations, or `--exit-zero`      |
-| 1    | violations found                     |
-| 2    | ruff failed: config error, panic, IO |
+The host treats pointers, lengths, and packed results as unsigned bit patterns. It must:
 
-With `--exit-zero` the fatal-severity branch is skipped too, so a panic inside ruff still exits 0. The adapter must look
-at `severity` and stderr, never trust exit code alone when `--exit-zero` is set. Without `--exit-zero`, 1 means
-"diagnostics on stdout", 2 means "stdout untrustworthy, show stderr".
+1. Verify `abi_version() == 1`.
+2. Encode the request, call `alloc(len)`, and write exactly that many bytes at the returned pointer.
+3. Call the operation, unpack the result, and read its JSON bytes.
+4. Call `dealloc` for both the input and output pointers, even when the operation reports an error.
 
-### 1.2 JSON diagnostic shape
+Calls can grow memory. Obtain fresh views after every guest call and copy response bytes before releasing them.
+Inputs are borrowed during a call, not consumed. Passing an unknown pointer or a length beyond its owned allocation
+returns a structured error without dereferencing arbitrary host-provided addresses.
 
-`--output-format json` prints an array, `json-lines` prints one object per line. Same object
-(`crates/ruff_db/src/diagnostic/render/json.rs`):
+One instance supports many calls. Serialize calls within an instance; use separate instances for parallel checks.
+Configuration is resolved anew per check and never leaks between calls. Initialization of Ruff's inventory constructors
+happens once inside the plugin; the host needs no initialization export.
+
+The host supplies memory and execution limits and terminates/discards an instance on cancellation or a WASM trap.
+Panics abort/trap instead of becoming JSON errors. The 8 MiB limit applies to request bytes, not total guest memory or
+response size; metadata contains the full schema. Buffer ownership does not replace host memory limits.
+
+## Host portability
+
+This is a serialized plugin contract, independent of the language implementing actionlint. `transport: "wasm-core-json"`
+identifies the current binding; absent on legacy artifacts means the same core WASM/JSON binding. `abi_version: 1`
+specifies that binding's exact memory and calling rules. Operation versions describe the data contract. A rewrite from
+Go to Rust changes the host adapter, not the plugin ID, operation versions, or artifacts.
+
+The boundary contains WASM integers, guest-owned linear-memory buffers, and UTF-8 JSON. Guest pointers are offsets into
+guest memory, never pointers into Go or Rust host memory. No Go struct layout, Rust trait object, enum layout,
+allocator,
+compiler version, or runtime-specific compiled-module format is part of the contract. Hosts copy results into their own
+memory and release guest allocations with the guest's `dealloc`. They must parse response objects with support for
+unknown optional fields; Rust consumers must not apply `serde(deny_unknown_fields)` to extensible response or discovery
+objects. Requests retain the stricter versioned rules described below.
+
+Source and filenames are ordinary JSON strings. The v1 coordinate unit is Unicode scalar values, not UTF-8 byte indices,
+grapheme clusters, or LSP UTF-16 units. Preserve it when changing the host language. Virtual filenames describe
+snippets;
+they do not grant filesystem access. Actionlint's YAML AST, internal diagnostic types, editor protocol objects, and
+cancellation primitives remain host implementation details.
+
+The same packaged artifact is exercised by independent Go/wazero, Rust/Wasmi, and TypeScript/WebAssembly hosts. The Rust
+host test is a separate Cargo package with no dependency on this plugin crate or Ruff, and uses the same frozen v1
+signature fixture as the Go test. It verifies static prefix discovery, metadata parity, config error shapes, repeated
+Unicode checks, input/output ownership, and fuel-based interruption under a host memory limit. Its runtime dependency is
+kept out of the guest build.
+
+A future Rust rewrite may use a different compatible core runtime without changing the contract. The typed WIT
+component is separately versioned and keeps the core v1 artifact available for existing hosts. Both adapters call
+the same typed Rust analysis functions. A core module does not become a component by relabeling metadata.
+Runtime-specific compilation caches stay local to each host;
+redistributable plugins remain portable artifacts. Native Rust linking may be offered separately, but Rust ABI/trait
+compatibility is not a replacement for this serialized boundary.
+
+## Requests and responses
+
+`check` accepts exactly these fields; `config` may be omitted:
 
 ```json
 {
-  "cell": null,
-  "code": "F821",
-  "name": "undefined-name",
-  "severity": "error",
-  "message": "Undefined name `a`",
-  "filename": "/abs/path/from/stdin-filename.py",
-  "location": { "row": 1, "column": 4 },
-  "end_location": { "row": 1, "column": 5 },
-  "noqa_row": 1,
-  "url": "https://docs.astral.sh/ruff/rules/undefined-name",
-  "fix": {
-    "applicability": "safe",
-    "message": "Remove unused import: `os`",
-    "edits": [
-      {
-        "content": "",
-        "location": { "row": 1, "column": 1 },
-        "end_location": { "row": 2, "column": 1 }
-      }
-    ]
-  }
+  "source": "print(missing)\n",
+  "filename": "workflow.step.py",
+  "config": { "lint": { "extend-select": ["B", "UP"] }, "target-version": "py314" }
 }
 ```
 
-- `row` and `column` are 1-based. `end_location` is exclusive.
-- Syntax errors: `code` is `"invalid-syntax"` (non-preview) or `null` (preview), `name` is `"invalid-syntax"`, `url`
-  null, `noqa_row` null.
-- `fix.applicability` is `safe`, `unsafe` or `display`.
-- `location` and `filename` are nullable in the schema. In practice they are set for every stdin diagnostic.
+`filename` must be nonempty and contain no NUL bytes. Relative names resolve against a virtual `/` root for Ruff's
+path matching. The diagnostic retains the original filename. `.pyi` selects stub mode; all other extensions use Python
+module parsing. No file is read.
 
-### 1.3 SARIF
-
-`--output-format sarif` emits SARIF 2.1.0 with `tool.driver.name = "ruff"`, rule descriptors, `file://` URIs from the
-absolutized stdin filename, and `fixes` with `deletedRegion` + `insertedContent`. Syntax errors appear as results
-without a rule descriptor. Usable as the neutral format if actionlint wants one parser for every tool, but it is bulkier
-and needs URI → path mapping.
-
-### 1.4 Metadata commands
-
-- `ruff version --output-format json` → `{ "version": "0.17.0", "commit_info": {...}|null }`.
-- `ruff rule F821 --output-format json` → `{ name, code, linter, summary, message_formats, fix, fix_availability,
-  explanation, preview, status, category, source_location }`.
-- `ruff rule --all --output-format json` → array of the above.
-- `ruff linter --output-format json` → `[{ prefix, name, url, categories? }]`.
-
-Enough for the adapter to validate a user's `select` list and to render rule docs links offline.
-
-### 1.5 Pyflakes rule set in ruff
-
-`crates/ruff_linter/src/codes.rs` registers 43 `F` rules: F401–F407, F501–F509, F521–F525, F541, F601, F602, F621, F622,
-F631–F634, F701, F702, F704, F706, F707, F722, F811, F821–F823, F841, F842, F901. `--select F` is the pyflakes
-replacement.
-
-### 1.6 `ruff server`
-
-LSP over stdio, `ruff server [--preview] [--untrusted-workspace]`. Negotiates position encoding from client
-capabilities. Documents enter through `textDocument/didOpen` with `languageId`. Supports push diagnostics and pull
-diagnostics (`textDocument/diagnostic`) when the client advertises it. Settings per workspace via
-`initializationOptions` / `workspace/configuration`: `configuration` (path or inline TOML object),
-`configurationPreference`, `lint.select`, `lint.extendSelect`, `lint.ignore`, `lint.preview`, `exclude`, `lineLength`,
-`showSyntaxErrors`, `logLevel`.
-
-Relevant only if actionlint gains a long-lived mode. One ruff process per actionlint run with virtual `untitled:`
-documents per step would amortize startup, but ruff startup is already single-digit ms.
-
-## 2. What actionlint already has
-
-Pyflakes is gone on this branch. `--pyflakes` is accepted and ignored (`internal/cli/root.go`, `internal/cli/check.go`),
-the Action input prints a deprecation warning (`internal/githubaction/main.go`), and the `UPSTREAM.md` row for
-rhysd/actionlint#439 names a generic external-linter protocol as the replacement.
-
-Seams the contract reuses:
-
-| concern                  | existing seam                                                                                                                                                                                     |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| process scheduling       | `concurrentProcess` (semaphore, `Context` cancels children), `externalCommand.runInDirectory`, `cmdExecution.run` in `process.go`                                                                 |
-| tool resolution          | `ExternalCommandOptions{Executable, Arguments, Environment, WorkingDir}`, `ResolveExternalCommandOptions`, `execabs.LookPath`                                                                     |
-| CLI / env surface        | `--shellcheck` flag; `ACTIONLINT_<TOOL>_BIN`, `_FLAGS`, `_ENV` through `externalToolEnvironment(tool)` in `internal/cli/env.go`; `doctor` rows with `available`/`unavailable`/`disabled`          |
-| config                   | `Config.Tools` (`ToolsConfig`), `lint.external` rule group, `lint.disable`, `cfg.diagnosticLevel(name)`                                                                                           |
-| rule registry            | `ruleDescriptor{Category: "external", build, enabled}` in `rule_registry.go`; `analysis_engine.go` skips external rules whose level is `off`                                                      |
-| shell resolution         | `resolveRunShell` (step → job → workflow → runner/container), `shellcheckShell.analysis()` derives the dialect from the shell template                                                            |
-| snippet → YAML positions | `ExecRun.source` (`*scriptSource`), `pos`/`endPos`, spans skip YAML-synthesized bytes, `literal` gates fixes                                                                                      |
-| expression sanitizing    | `sanitizeExpressionsInScript`: `${{ … }}` → underscores, same length, newlines kept                                                                                                               |
-| diagnostic metadata      | `Error.Kind` (rule name), `Error.code`, `Error.severity`, `Error.fixes`, `Error.endPosition`, `Error.source` for findings in other files; `Diagnostic.Rule/Code/Severity/Fixes` in JSON and SARIF |
-| files read by a tool     | `inputFiles.add` through `rule.onInput`, surfaces as `AnalysisResult.Inputs`                                                                                                                      |
-| inline suppression       | `# actionlint:ignore RULE -- reason`, rule names only, whitelist `isInlineSuppressibleRule`                                                                                                       |
-| tool requirement query   | `AnalysisSession.RequiredTools` → `ExternalToolRequirements{Shellcheck bool}`                                                                                                                     |
-| Go-level extension       | `LinterOptions.OnRulesCreated func([]Rule) []Rule`                                                                                                                                                |
-| test harness             | `TestKnownShellCommandHelper`: the test binary re-executes itself as the fake tool                                                                                                                |
-
-Everything above is shellcheck-shaped by name only. The contract generalizes the names, keeps the mechanisms.
-
-## 3. The contract
-
-actionlint owns the workflow: which steps, which language, positions, suppression, output. The checker owns the
-language. Between them: one JSON request on stdin, one JSON response on stdout, per workflow file.
-
-The contract is actionlint's. actionlint carries no knowledge of any tool's flags, config files, output formats or exit
-codes. A tool joins by shipping an adapter that speaks this protocol. Ruff, shellcheck, PSScriptAnalyzer each get an
-adapter; actionlint stays unchanged when a tool changes its CLI.
-
-### 3.1 Registration
-
-`actionlint.yaml`:
-
-```yaml
-tools:
-  shellcheck: { enabled: true }
-  ruff:
-    command: [actionlint-plugin-ruff]
-    languages: [python]
-    config:
-      select: [F]
-lint:
-  external:
-    ruff: on
-```
-
-- `tools.<name>` is the checker. `<name>` becomes `Error.Kind`, the rule ID in `lint.external`, `lint.disable`,
-  `# actionlint:ignore <name> -- reason`, and the `doctor` row. Registering it adds it to `isInlineSuppressibleRule`.
-- `command` is argv, exec'd without a shell, resolved with `execabs.LookPath`. `ACTIONLINT_<NAME>_BIN`, `_FLAGS`,
-  `_ENV` override it the way `SHELLCHECK` does today.
-- `languages` are the normalized shell names actionlint already derives: command basename of the resolved shell
-  template, lowercased, `.exe` stripped. `python`, `bash`, `sh`, `pwsh`, `powershell`, `cmd`, `node`. A step whose
-  shell cannot be resolved (`shellValueUnknown`) is never dispatched.
-- `config` is opaque to actionlint and forwarded verbatim.
-- Each `tools.<name>` entry synthesizes a `ruleDescriptor` with `Category: "external"` at config load, so presets,
-  `lint.external`, `doctor`, `RequiredTools` and the JSON schema see it without per-tool code.
-  `ExternalToolRequirements` becomes `map[string]bool`.
-- shellcheck keeps its builtin rule. `ShellcheckConfig` and `-x` source following are shellcheck-only and stay put.
-
-### 3.2 Request
+Successful checks return:
 
 ```json
 {
-  "protocol": 1,
-  "workflow": "/abs/.github/workflows/ci.yml",
-  "config": { "select": ["F"] },
-  "snippets": [
+  "ok": true,
+  "diagnostics": [
     {
-      "id": "jobs.test.steps[2]",
-      "language": "python",
-      "shell": "python -u {0}",
-      "source": "import os\nprint(_____________)\n",
-      "expressions": [{ "line": 2, "column": 7, "end_column": 20 }],
-      "working_directory": "/abs/repo/src",
-      "env": ["GITHUB_TOKEN", "FOO"]
+      "filename": "workflow.step.py",
+      "code": "F821",
+      "name": "undefined-name",
+      "severity": "error",
+      "message": "Undefined name `missing`",
+      "location": { "row": 1, "column": 7 },
+      "end_location": { "row": 1, "column": 14 },
+      "url": "https://docs.astral.sh/ruff/rules/undefined-name/"
     }
   ]
 }
 ```
 
-- `source` is `ExecRun.Run.Value` after `sanitizeExpressionsInScript`. Response coordinates refer to this text,
-  1-based, so `scriptSource.pos`/`endPos` map them back and the checker never learns YAML exists. Underscores keep
-  columns stable.
-- `expressions` are the sanitized `${{ }}` spans in `source` coordinates. A checker drops a diagnostic that lies fully
-  inside one.
-- `shell` is the resolved template, `language` its normalized name. The checker picks flags from either.
-- `working_directory` is `runPaths.effectiveRunDirectory` resolved locally, or `null` when it is `directoryUnknown`.
-- `env` lists names from `env:` at step, job and workflow level. Names only.
+Rows and columns are one-based Unicode character offsets. End positions are exclusive. CRLF is preserved. `code`
+prefers Ruff's short rule code and falls back to the diagnostic name, including `invalid-syntax`. `severity` preserves
+Ruff's `info`, `warning`, `error`, or `fatal` value. `url` can be null. Diagnostics sort by row, column, and code.
+There are no fix edits. Field names and coordinates match actionlint's existing Ruff diagnostic decoder.
 
-### 3.3 Response
+`validate_config` accepts the Ruff options object itself, not a snippet or a `config` envelope:
+
+```json
+{ "lint": { "extend-select": ["B", "UP"], "ignore": ["F401"] }, "target-version": "py312" }
+```
+
+Success returns `{ "ok": true, "errors": [] }`. Both operations use the same Ruff settings conversion. Malformed JSON,
+unknown fields, invalid options or selectors, unsupported embedded options, and invalid allocations return:
+
+```json
+{ "ok": false, "errors": ["invalid Ruff config: ..."] }
+```
+
+Errors have no `diagnostics` field. Findings and Python syntax errors are successful analysis, so `ok` remains true.
+The host handles `enabled` and passes only Ruff options. It must not validate selectors or targets against a second
+catalog.
+
+## Metadata and schema
+
+`metadata()` returns:
 
 ```json
 {
-  "protocol": 1,
-  "tool": { "name": "ruff", "version": "0.17.0" },
-  "diagnostics": [
-    {
-      "snippet": "jobs.test.steps[2]",
-      "code": "F821",
-      "severity": "error",
-      "message": "Undefined name `x`",
-      "line": 2,
-      "column": 7,
-      "end_line": 2,
-      "end_column": 8,
-      "url": "https://docs.astral.sh/ruff/rules/undefined-name",
-      "fix": {
-        "description": "Remove unused import: `os`",
-        "edits": [{ "line": 1, "column": 1, "end_line": 2, "end_column": 1, "replacement": "" }]
-      }
-    }
-  ],
-  "inputs": ["/abs/repo/scripts/lib.sh"],
-  "errors": ["ruff exited 2: ..."]
+  "metadata_version": 1,
+  "abi_version": 1,
+  "transport": "wasm-core-json",
+  "id": "actionlint-plugin-ruff",
+  "name": "Ruff",
+  "description": "Hermetic Ruff engine for actionlint, with a core WebAssembly JSON ABI",
+  "license": "MIT",
+  "homepage": "https://github.com/kjanat/actionlint-plugin-ruff",
+  "repository": "https://github.com/kjanat/actionlint-plugin-ruff",
+  "documentation_url": "https://github.com/kjanat/actionlint-plugin-ruff/blob/master/docs/plugin-contract.md",
+  "update_url": "https://api.github.com/repos/kjanat/actionlint-plugin-ruff/releases",
+  "update_format": "github-releases-v1",
+  "languages": ["python"],
+  "shells": ["python"],
+  "file_extensions": ["py", "pyi"],
+  "conflicts": [],
+  "plugin_version": "0.1.0",
+  "engine": { "name": "ruff", "version": "0.17.0" },
+  "interfaces": {
+    "check": [{ "version": 1, "export": "check", "exclusive_group": "python/ruff/check" }],
+    "validate_config": [{ "version": 1, "export": "validate_config" }],
+    "metadata": [{ "version": 1, "export": "metadata" }]
+  },
+  "capabilities": {
+    "check": true,
+    "validate_config": true,
+    "config_schema": true,
+    "noqa": false,
+    "filesystem": false,
+    "fixes": false,
+    "format": false,
+    "position_encoding": "unicode",
+    "max_input_bytes": 8388608
+  },
+  "config_schema": {}
 }
 ```
 
-- `code` → `Error.code`, `severity` → `Error.severity`. `Error.Message` becomes
-  `<name> reported issue in this script: <code>:<severity>:<line>:<col>: <message>`, the shellcheck wording. `url`
-  feeds `Diagnostic` and SARIF `helpUri`.
-- `line`/`column`/`end_line`/`end_column` are `source` coordinates, `end_*` exclusive. actionlint calls `source.pos`
-  and `source.endPos`; when mapping fails the finding lands on `RunPos`, the shellcheck fallback.
-- `path` (optional, absolute) on a diagnostic reports a finding in another file. actionlint builds it the way
-  `sourcedDiagnostic` does and adds the path to `inputs`.
-- `fix.edits` pass the `shellcheckDiagnosticFixes` gate: literal block only, one line per edit, no overlap, indent
-  preserved. Otherwise the fix is dropped and the diagnostic kept.
-- `severity` is `error`, `warning`, `info` or `style`. `sarifLevel` already maps these.
-- `inputs` are files the checker read. They join `AnalysisResult.Inputs`.
-- `errors` are checker-level failures. actionlint reports them once per workflow as a rule error, the path a shellcheck
-  JSON parse failure takes today.
+The actual `config_schema` is generated by `schemars` from the linked Ruff `Options` type, with unsupported embedded
+options removed and plugin defaults annotated. Embed it as a complete schema document, preserving its `$defs` and
+references. JSON Schema cannot express every Ruff semantic error; `validate_config` is authoritative.
 
-Exit codes:
+### Discovery and plugin selection
 
-| code          | actionlint behaviour                                                                          |
-| ------------- | --------------------------------------------------------------------------------------------- |
-| 0             | parse stdout                                                                                  |
-| 3             | protocol mismatch, stdout empty, stderr becomes the error                                     |
-| anything else | `cmdExecution.run` today: non-empty stdout is parsed, empty stdout is an error quoting stderr |
+`id` is the stable plugin identity; `plugin_version` is its release version. Project URLs refer to this wrapper,
+while `engine` identifies the linked Ruff version. `update_url` with `update_format: "github-releases-v1"` identifies
+GitHub's releases API, not a WASM download URL or a request to update automatically. There are currently no published
+releases; an empty feed means no update is available. An updater must select an eligible release, obtain its artifacts
+and checksums, and check compatibility before replacing an installed plugin. Never derive a supported interface from a
+plugin or Ruff version number.
 
-Diagnostics never change the exit code. A tool that exits non-zero on findings still works through the existing stdout
-rule.
+`languages` uses editor language identifiers. `shells` contains canonical actionlint shell identifiers, so `python`
+covers snippets the host has identified as Python. The host continues to parse interpreter commands such as
+`python3.12 -u {0}`, sanitize expressions, and select snippets; the plugin does not parse shell command lines.
+`file_extensions` contains lowercase extensions without the leading dot. `.pyi` selects stub parsing. These are
+selection hints, not a reason to reject a sanitized Python snippet with a virtual filename.
 
-### 3.4 Behaviour rules
+`conflicts` lists plugin IDs that cannot be active together. An empty list declares no explicit cross-plugin conflict.
+Identical plugin IDs are alternate versions of the same plugin. An operation's `exclusive_group` declares
+interchangeable
+providers: the host chooses one provider in that group for that operation on a matching snippet, preventing duplicate
+Ruff diagnostics. Overlapping language support alone does not constitute a conflict. Operation groups are independent,
+so a future formatter can coexist with a checker. The host controls selection and overrides; metadata never disables
+another plugin by itself.
 
-- Hermetic: the response is a function of the request and `config`. A checker reads no config files, env vars or
-  dotfiles on its own. A tool that discovers config from the filesystem gets that disabled by its adapter, re-enabled
-  only through an explicit `config` key.
-- Deterministic order: diagnostics sorted by `snippet`, `line`, `column`, `code`.
-- No network. File reads only under `working_directory` or the repo, every one listed in `inputs`.
-- One process per workflow file. `VisitWorkflowPre` collects, `VisitWorkflowPost` sends and waits. The
-  `concurrentProcess` semaphore still bounds parallelism across files.
-- cwd is `ruleContext.projectRoot`, else `workingDir`. Cancelling `LinterOptions.Context` kills the child.
-- Stderr is for humans. Shown only when the response is invalid.
+### Interface compatibility and evolution
 
-## 4. `actionlint-plugin-ruff` on that contract
+Compatibility has three independent versions:
 
-Per request: one `ruff check` process per snippet over stdin. `@argfile` batching can come later without touching the
-contract.
+| Field                              | Versions                                                                                    |
+| ---------------------------------- | ------------------------------------------------------------------------------------------- |
+| `metadata_version`                 | Discovery object format. Absent on legacy artifacts means the original v1 metadata.         |
+| `abi_version`                      | Core memory layout, allocation ownership, calling convention, and host-import requirements. |
+| `interfaces.<operation>[].version` | That operation's JSON request, response, coordinates, and semantics.                        |
 
-Request → ruff:
+Version numbers are exact positive integers, not minimum host versions. Hosts explicitly select an understood operation
+version and its advertised `export`. An absent operation or unsupported version disables that optional feature; a
+missing required operation prevents activation. Unknown optional fields and operation names must be ignored. The
+provided `resolveInterface` and `requireInterface` helpers implement these rules without a runtime. The development
+host checks the operation versions before checking a snippet. Legacy artifacts without `metadata_version` or
+`interfaces` expose only the original `check`, `validate_config`, and `metadata` v1 exports.
 
-| request / config                      | ruff flag                                                                                      |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| snippet `source`                      | stdin                                                                                          |
-| `workflow` + snippet `id`             | `--stdin-filename <workflow>.<id>.py`, only to give the `.py` suffix and a readable `filename` |
-| always, unless `project_config: true` | `--isolated`                                                                                   |
-| `config.select` (default `["F"]`)     | `--select`                                                                                     |
-| `config.ignore`                       | `--ignore`                                                                                     |
-| `config.target_version`               | `--target-version`                                                                             |
-| `config.extra_config` (TOML strings)  | `--config ...` each                                                                            |
-| always                                | `--no-cache --output-format json --exit-zero --quiet -`                                        |
+Keep every advertised v1 contract usable. Add optional response/discovery fields with existing fields and meanings
+preserved. Existing `check` requests reject unknown fields, so a host cannot send new request fields merely because a
+plugin is newer. A new request shape, changed required field, coordinate unit, error meaning, or result shape needs a
+new
+operation version and a separate export, for example `check_v2`. Advertise both versions while retaining v1 for old
+hosts. Memory/ownership or calling-convention changes need a new ABI version; incompatible discovery changes need a new
+metadata version. Plugin release versions do not substitute for these contract versions. Ruff rule/default changes
+remain engine behavior and are governed by the engine release and user configuration, not the memory ABI.
 
-Ruff JSON → response:
+For example, a later plugin could add `format: [{ "version": 1, "export": "format_v1" }]` and
+`fix: [{ "version": 1, "export": "fix_v1" }]` alongside the existing interfaces. This build has neither export:
+`capabilities.format` and `capabilities.fixes` are false. Adding them requires specified and tested contracts first;
+changing a boolean is insufficient. A future fix contract must distinguish safe and unsafe fixes and define edit
+coordinates, non-overlap, and the exact source revision to which edits apply. Producing edits does not authorize
+applying
+them: the CLI or LSP host owns automatic application, unsafe-fix opt-in, and mapping back to workflow YAML.
 
-| ruff                               | contract                   |
-| ---------------------------------- | -------------------------- |
-| `code` (fallback `name` when null) | `code`                     |
-| `severity`                         | `severity`                 |
-| `message`                          | `message`                  |
-| `location.row/column`              | `line/column`              |
-| `end_location.row/column`          | `end_line/end_column`      |
-| `url`                              | `url`                      |
-| `fix.message`, `fix.edits[]`       | `fix.description`, `edits` |
+An actionlint LSP can reuse the check interface for diagnostics and later negotiate format/fix interfaces for formatting
+and code actions. The host translates one-based Unicode positions to its negotiated LSP position encoding, maps snippet
+edits to YAML, and rejects edits spanning sanitized expressions or stale document versions. The engine does not
+advertise
+an LSP transport; LSP methods and document lifetime belong to the host. Formatting, fix generation, and automatic edit
+application remain separate capabilities.
 
-Drop a diagnostic whose range lies fully inside an `expressions` span.
+The frozen `tests/fixtures/abi-v1.json` signatures are checked against the actual compiled module by the Go and Rust
+host integration tests. Existing Rust, TypeScript, and Go probes retain the v1 requests, error shapes, buffer ownership,
+and Unicode
+coordinates. Metadata tests cover legacy discovery, coexistence of operation versions, unsupported required versions,
+unknown optional extensions, unsupported transports, and ambiguous descriptors. Run these checks against rebuilt
+artifacts before accepting any
+interface change; extending the fixture to excuse a v1 break is not a compatible update.
 
-`--isolated` is the default. With it the result depends on `config` alone, the same guarantee pyflakes gave.
-`project_config: true` drops `--isolated`; ruff then walks up from the `--stdin-filename` path and applies the repo's
-`pyproject.toml` or `ruff.toml`. The adapter still passes `--select` and `--ignore` from `config`, which override the
-file. With `force-exclude = true` in that file a matching `exclude` silently yields zero diagnostics, so the adapter
-passes `--no-force-exclude` whenever `project_config` is on.
+The `Contract checks` workflow runs these checks on pull requests and pushes to `master`. It builds and packages the
+engine before exercising static discovery, operation negotiation, runtime behavior, CLI handling, and both Go and Rust
+hosts,
+then checks formatting, Rust/TypeScript linting, and Go cleanup errors with `errcheck`. Generated artifacts remain build
+outputs rather than committed
+catalogs.
 
-Failure handling: ruff exit 2 or any `severity: "fatal"` → append to `errors`, keep diagnostics from the other snippets.
-Ruff missing from `PATH` → exit 1 with one stderr line.
+### Static metadata without instantiation
 
-`actionlint.yaml`:
+The packaged module has an `actionlint.plugin` custom section immediately after the eight-byte core WASM header. Its
+payload is UTF-8 JSON, byte-for-byte identical to `metadata.json`, including the trailing newline and full schema. It
+contains the same object returned by the runtime `metadata()` export.
 
-```yaml
-tools:
-  ruff:
-    command: [actionlint-plugin-ruff]
-    languages: [python]
-    config:
-      select: [F, E9]
-      target_version: py312
-      project_config: false
-```
+To inspect the module without a runtime, read the core header, section id `0`, a u32 LEB128 section length, a u32 LEB128
+name length, the UTF-8 name `actionlint.plugin`, then the remaining section bytes as JSON. The reader can stop there;
+it does not need to read, compile, validate, or execute the code section. The provided TypeScript reader rejects invalid
+headers, overflowing/truncated lengths, malformed metadata, and metadata payloads above 1 MiB.
 
-## 5. Why a process contract and not a Go plugin API
+This layout supports reading a file prefix or an HTTP Range response containing the complete first section. For network
+discovery, the identical `metadata.json` sidecar can be fetched directly. Gzip assets must be decompressed before
+section
+inspection. Reading metadata does not validate the executable module; normal module validation happens when it is loaded
+for checking Python.
 
-- actionlint is a static Go binary. Go plugins need an identical toolchain and are Linux-only. The process boundary
-  keeps actionlint's build untouched.
-- `OnRulesCreated` already serves Go consumers who want in-process rules.
-- Checkers in any language. Ruff's own wasm is JS-only, so the adapter wraps the CLI anyway.
-- One request per workflow keeps process count at `workflows × tools`, not `steps × tools`.
-- Same contract for pyflakes-compat, pwsh `PSScriptAnalyzer`, future ones. shellcheck can migrate later.
+The packaging step adds or replaces this section after WASM optimization, then regenerates the gzip asset and checksums.
+The builder generates the payload from the engine rather than maintaining a separate manifest or schema snapshot.
 
-## Unresolved
+The build obtains `schema.json` by calling `metadata` on the final module, keeping editor completion and the engine on
+the same version without a schema snapshot in the source tree. Upstream references are
+[Ruff's options](https://github.com/astral-sh/ruff/blob/5b27c1ccfaa230fb195855f5cf3404a21e3379cd/crates/ruff_workspace/src/options.rs)
+and its
+[WASM checker](https://github.com/astral-sh/ruff/blob/5b27c1ccfaa230fb195855f5cf3404a21e3379cd/crates/ruff_wasm/src/lib.rs).
 
-- Diagnostic fully inside `${{ }}` span: drop, or report with a note? Pick drop.
-- Per-workflow request vs per-step (current shellcheck model)? Per-workflow fewer spawns, needs collect-then-send in the
-  rule. Pick per-workflow.
-- Code-level suppression `# actionlint:ignore ruff/F401`: extend `isInlineSuppressibleRule` for `<tool>/<code>`, or
-  rule-level only? Rule-level works today; code-level is new grammar.
-- `tools.<name>` synthesizing a `ruleDescriptor` vs one fixed `external-tool` rule that fans out. Synthesized keeps
-  `lint.external.<name>` and `doctor` per tool. Pick synthesized.
-- Move shellcheck onto the contract now or keep builtin? Builtin keeps `-shellcheck`, `tools.shellcheck.config`, `-x`
-  intact. Keep builtin.
-- `fix` field from day one, since `Error.fixes` and the gate exist, or drop until `-fix`? Keep.
+## Host responsibilities
 
-[`5b27c1ccfaa230fb195855f5cf3404a21e3379cd`]: https://github.com/astral-sh/ruff/commit/5b27c1ccfaa230fb195855f5cf3404a21e3379cd
-[`6567fe7a`]: https://github.com/kjanat/actionlint/commit/6567fe7a
+A Go or Rust host can compile the embedded module once and pool instances. It forwards sanitized Python and opaque Ruff
+options,
+unwraps the response, then applies expression-span filtering and actionlint's YAML source mapping. The plugin does not
+interpret `${{ }}`, workflow YAML, shell strings, or actionlint suppressions. The host supplies virtual filenames and
+interpreter-derived targets. Package discovery is disabled, so checks requiring package roots lack repository context.
+
+The native utility is for development and consumes the same JSON requests. It does not implement the previous generic
+workflow/snippet-batch process protocol. Actionlint's public loader supports the legacy core module and the typed
+script-engine component; neither backend requires a native Ruff executable.

@@ -1,0 +1,50 @@
+name: Contract checks
+
+on:
+  push: { branches: [master] }
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: Rust, TypeScript, and Go host contracts
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    env: { TRUSTED: "${{ case(github.event_name == 'pull_request', false, true) }}" }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - parallel:
+          - uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5
+          - uses: kjanat/runner@b32ea932a1813ae0be44e755c16df9f9f5ca86a4 # master
+          - uses: kjanat/setup-tombi@fa7a237e9661f88c78309b5214f4eb7cf0c7c5f6 # HEAD
+          - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2
+            with: { deno-version: v2.x, cache: "${{ env.TRUSTED }}" }
+          - name: Install pinned Rust toolchain and WASM target
+            run: rustup toolchain install
+      - name: Rust behavior and lint checks
+        run: |
+          cargo test --locked --workspace
+          cargo clippy --locked --workspace --all-targets -- -D warnings
+      - name: Build and package the actual WASM engine
+        run: deno task build
+      - name: Static metadata, interface negotiation, WASM behavior, and CLI checks
+        run: run -s test:wasm test:cli;
+          deno lint scripts tests
+      - name: Frozen v1 signatures and Go host integration
+        run: go -C tests/wazero test -mod=readonly ./...
+      - name: Typed script-engine component through the public host
+        run: go -C tests/component test -mod=readonly -v ./...
+      - name: Go cleanup error checks
+        working-directory: tests/wazero
+        run: golangci-lint run --no-config --enable-only=errcheck ./...
+      - name: Component host cleanup error checks
+        working-directory: tests/component
+        run: golangci-lint run --no-config --enable-only=errcheck ./...
+      - name: Frozen v1 signatures and independent Rust host integration
+        run: cargo test --locked --manifest-path tests/rust-host/Cargo.toml;
+          cargo clippy --locked --manifest-path tests/rust-host/Cargo.toml --all-targets -- -D warnings
+      - name: Formatting
+        uses: kjanat/dprint-check@29c42153a7346f4d7315883ff7722cfe22cd510c # v3

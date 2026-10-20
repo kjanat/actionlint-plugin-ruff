@@ -1,0 +1,5 @@
+#:schema https://www.schemastore.org/cargo-config.json
+
+[alias]
+cla = "clippy --locked --all-targets -- -D warnings"
+tl  = "test --locked"

@@ -1,1 +1,4 @@
 /ruff
+/target
+/tests/rust-host/target
+/artifacts

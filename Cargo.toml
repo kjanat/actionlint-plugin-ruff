@@ -1,0 +1,54 @@
+[package]
+name          = "actionlint-plugin-ruff"
+version       = "0.1.0"
+edition       = "2024"
+rust-version  = "1.97"
+description   = "Hermetic Ruff engine for actionlint, with a core WebAssembly JSON ABI"
+documentation = "https://github.com/kjanat/actionlint-plugin-ruff/blob/master/docs/plugin-contract.md"
+homepage      = "https://github.com/kjanat/actionlint-plugin-ruff"
+repository    = "https://github.com/kjanat/actionlint-plugin-ruff"
+license       = "MIT"
+publish       = false
+
+[workspace]
+resolver = "3"
+members  = ["crates/component"]
+exclude  = ["tests/rust-host"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+ruff_linter = { version = "0.17.0" }
+
+ruff_db             = { version = "0.0.17" }
+ruff_python_ast     = { version = "0.0.17" }
+ruff_python_codegen = { version = "0.0.17" }
+ruff_python_index   = { version = "0.0.17" }
+ruff_python_parser  = { version = "0.0.17" }
+ruff_ranged_value   = { version = "0.0.17" }
+ruff_source_file    = { version = "0.0.17" }
+ruff_workspace      = { version = "0.0.17", features = ["schemars"] }
+
+schemars   = { version = "1.2.3" }
+serde      = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0" }
+
+[features]
+default  = ["core-abi"]
+core-abi = []
+
+[patch.crates-io]
+# Ruff's browser clock pulls in JS bindings even though linting never uses it.
+# The core module has no clock imports; unexpected clock access traps on wasm32.
+web-time = { path = "crates/web-time" }
+
+[profile.dev]
+debug = 0
+
+[profile.release]
+opt-level     = "s"
+strip         = "debuginfo"
+lto           = "thin"
+panic         = "abort"
+codegen-units = 1

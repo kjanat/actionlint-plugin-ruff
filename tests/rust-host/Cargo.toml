@@ -1,0 +1,17 @@
+[package]
+name         = "actionlint-plugin-ruff-host-tests"
+version      = "0.1.0"
+edition      = "2024"
+rust-version = "1.97"
+publish      = false
+
+[dev-dependencies]
+serde_json = "1.0"
+
+[dev-dependencies.wasmi]  # Keep the conformance host independent of compiler tail-call optimization.
+version          = "2.0.0"
+default-features = false
+features         = ["portable-dispatch", "stable", "std", "validate"]
+
+[profile.test]
+opt-level = 2
