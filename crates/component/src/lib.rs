@@ -8,12 +8,71 @@ use sha2::Sha256;
 
 wit_bindgen::generate!({
     path: "wit",
-    world: "script-engine-plugin",
+    world: "template-script-engine-plugin",
 });
 
 use exports::kjanat::actionlint::script_engine as api;
+use exports::kjanat::actionlint::template_effects as effects;
 
 pub struct Plugin;
+
+impl effects::Guest for Plugin {
+    fn contract() -> String {
+        engine::template_effects::CONTRACT.into()
+    }
+
+    fn check(request: effects::Request) -> effects::Outcome {
+        match engine_request(request.source, request.filename, request.config)
+            .and_then(engine::check_request)
+            .and_then(|findings| {
+                findings
+                    .into_iter()
+                    .map(|finding| {
+                        let effect = match finding.template_effect {
+                            engine::template_effects::TemplateEffect::None => effects::Effect::None,
+                            engine::template_effects::TemplateEffect::LineLength => {
+                                effects::Effect::LineLength
+                            }
+                            engine::template_effects::TemplateEffect::CompleteReferences => {
+                                effects::Effect::CompleteReferences
+                            }
+                            engine::template_effects::TemplateEffect::OpaqueName => {
+                                effects::Effect::OpaqueName
+                            }
+                            engine::template_effects::TemplateEffect::OpaqueParentheses => {
+                                effects::Effect::OpaqueParentheses
+                            }
+                            engine::template_effects::TemplateEffect::StringContents => {
+                                effects::Effect::StringContents
+                            }
+                            engine::template_effects::TemplateEffect::DocstringSummary => {
+                                effects::Effect::DocstringSummary
+                            }
+                            engine::template_effects::TemplateEffect::ExportedName => {
+                                effects::Effect::ExportedName
+                            }
+                            engine::template_effects::TemplateEffect::PercentConversion => {
+                                effects::Effect::PercentConversion
+                            }
+                        };
+                        diagnostic(finding).map(|diagnostic| effects::Finding {
+                            diagnostic: effects_diagnostic(diagnostic),
+                            effect,
+                        })
+                    })
+                    .collect()
+            }) {
+            Ok(diagnostics) => effects::Outcome {
+                diagnostics,
+                error: None,
+            },
+            Err(error) => effects::Outcome {
+                diagnostics: Vec::new(),
+                error: Some(error),
+            },
+        }
+    }
+}
 
 impl api::Guest for Plugin {
     fn describe() -> api::Descriptor {
@@ -50,23 +109,57 @@ fn decode_config(config: &str) -> Result<Value, String> {
 }
 
 fn check_request(request: api::Request) -> Result<Vec<api::Diagnostic>, String> {
-    let length = request
-        .source
+    engine::check_request(engine_request(
+        request.source,
+        request.filename,
+        request.config,
+    )?)?
+    .into_iter()
+    .map(diagnostic)
+    .collect()
+}
+
+fn engine_request(
+    source: String,
+    filename: String,
+    config: String,
+) -> Result<engine::CheckRequest, String> {
+    let length = source
         .len()
-        .saturating_add(request.filename.len())
-        .saturating_add(request.config.len());
+        .saturating_add(filename.len())
+        .saturating_add(config.len());
     if length > engine::MAX_INPUT_BYTES {
         return Err(format!("request exceeds {} bytes", engine::MAX_INPUT_BYTES));
     }
-    let request = engine::CheckRequest {
-        source: request.source,
-        filename: request.filename,
-        config: decode_config(&request.config)?,
-    };
-    engine::check_request(request)?
-        .into_iter()
-        .map(diagnostic)
-        .collect()
+    Ok(engine::CheckRequest {
+        source,
+        filename,
+        config: decode_config(&config)?,
+    })
+}
+
+fn effects_diagnostic(value: api::Diagnostic) -> effects::Diagnostic {
+    effects::Diagnostic {
+        filename: value.filename,
+        code: value.code,
+        name: value.name,
+        message: value.message,
+        severity: match value.severity {
+            api::Severity::Info => effects::Severity::Info,
+            api::Severity::Warning => effects::Severity::Warning,
+            api::Severity::Error => effects::Severity::Error,
+            api::Severity::Fatal => effects::Severity::Fatal,
+        },
+        location: effects::Position {
+            row: value.location.row,
+            column: value.location.column,
+        },
+        end_location: effects::Position {
+            row: value.end_location.row,
+            column: value.end_location.column,
+        },
+        url: value.url,
+    }
 }
 
 fn position(value: engine::Position) -> Result<api::Position, String> {
@@ -120,7 +213,7 @@ pub fn descriptor() -> api::Descriptor {
     }
 }
 
-/// Discovery metadata binds the packaged component to this exact WIT revision.
+/// Discovery metadata records the packaged component's WIT source provenance.
 pub fn metadata() -> Value {
     let mut value = engine::metadata();
     let object = value.as_object_mut().expect("engine metadata is an object");

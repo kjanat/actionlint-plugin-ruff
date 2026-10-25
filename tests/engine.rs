@@ -84,6 +84,23 @@ fn unicode_columns_and_crlf_are_preserved() {
 }
 
 #[test]
+fn lone_cr_uses_universal_newline_coordinates() {
+    let result = lint(
+        "print(1)\rprint(missing)\r",
+        json!({"lint": {"select": ["F821"]}}),
+    );
+    assert_eq!(codes(&result), ["F821"]);
+    assert_eq!(
+        result["diagnostics"][0]["location"],
+        json!({"row": 2, "column": 7})
+    );
+    assert_eq!(
+        result["diagnostics"][0]["end_location"],
+        json!({"row": 2, "column": 14})
+    );
+}
+
+#[test]
 fn modern_and_legacy_options_share_validation() {
     for config in [
         json!({"select": ["F821"]}),
@@ -192,7 +209,12 @@ fn metadata_schema_comes_from_the_linked_engine() {
     assert_eq!(data["shells"], json!(["python"]));
     assert_eq!(data["file_extensions"], json!(["py", "pyi"]));
     assert_eq!(data["conflicts"], json!([]));
-    assert_eq!(data["interfaces"]["check"][0]["version"], 1);
+    assert_eq!(data["interfaces"]["check"][0]["version"], 2);
+    assert_eq!(data["interfaces"]["check"][1]["version"], 1);
+    assert_eq!(
+        data["template_contract"],
+        actionlint_plugin_ruff::template_effects::CONTRACT
+    );
     assert_eq!(data["interfaces"]["check"][0]["export"], "check");
     assert_eq!(data["capabilities"]["format"], false);
     assert_eq!(data["capabilities"]["fixes"], false);

@@ -1,6 +1,7 @@
 //! Ruff owns Python analysis and option validation; actionlint owns script selection and YAML mapping.
 
 mod engine;
+pub mod template_effects;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown", feature = "core-abi"))]
 mod wasm;
 
@@ -14,6 +15,8 @@ pub const METADATA_VERSION: u32 = 1;
 pub const MAX_INPUT_BYTES: usize = 8 * 1024 * 1024;
 pub const PLUGIN_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const ENGINE_VERSION: &str = ruff_linter::VERSION;
+/// Default shared by runtime options and the published schema.
+pub const DEFAULT_TARGET_VERSION: &str = "py314";
 
 pub use engine::Diagnostic;
 pub use engine::Position;
@@ -114,7 +117,7 @@ pub fn config_schema() -> Value {
     for key in engine::UNSUPPORTED_OPTIONS {
         schema["properties"].as_object_mut().unwrap().remove(*key);
     }
-    schema["properties"]["target-version"]["default"] = json!("py314");
+    schema["properties"]["target-version"]["default"] = json!(DEFAULT_TARGET_VERSION);
     schema
 }
 
@@ -124,6 +127,7 @@ pub fn metadata() -> Value {
     let schema = rule.options_schema.clone();
     json!({
         "metadata_version": METADATA_VERSION,
+        "template_contract": template_effects::CONTRACT,
         "abi_version": ABI_VERSION,
         "transport": "wasm-core-json",
         "id": env!("CARGO_PKG_NAME"),
@@ -142,14 +146,18 @@ pub fn metadata() -> Value {
         "plugin_version": env!("CARGO_PKG_VERSION"),
         "engine": {"name": "ruff", "version": ruff_linter::VERSION},
         "interfaces": {
-            "check": [{"version": 1, "export": "check", "exclusive_group": "python/ruff/check"}],
+            "check": [
+                {"version": 2, "export": "check", "exclusive_group": "python/ruff/check"},
+                {"version": 1, "export": "check", "exclusive_group": "python/ruff/check"}
+            ],
             "validate_config": [{"version": 1, "export": "validate_config"}],
             "metadata": [{"version": 1, "export": "metadata"}]
         },
         "capabilities": {
             "check": true, "validate_config": true, "config_schema": true,
             "noqa": false, "filesystem": false, "fixes": false, "format": false,
-            "position_encoding": "unicode", "max_input_bytes": MAX_INPUT_BYTES
+            "position_encoding": "unicode", "max_input_bytes": MAX_INPUT_BYTES,
+            "script_shells": ["python"]
         },
         "rules": [rule],
         "config_schema": schema

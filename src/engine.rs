@@ -39,6 +39,9 @@ pub(crate) const UNSUPPORTED_OPTIONS: &[&str] = &[
 ];
 
 pub(crate) fn settings(mut config: Value) -> Result<Settings, String> {
+    if crate::ENGINE_VERSION != crate::template_effects::REVIEWED_ENGINE_VERSION {
+        return Err("Ruff version has no reviewed template-effects adapter".into());
+    }
     let object = config
         .as_object_mut()
         .ok_or("config must be a Ruff options object")?;
@@ -50,7 +53,10 @@ pub(crate) fn settings(mut config: Value) -> Result<Settings, String> {
         }
     }
     if object.get("target-version").is_none_or(Value::is_null) {
-        object.insert("target-version".into(), json!("py314"));
+        object.insert(
+            "target-version".into(),
+            json!(crate::DEFAULT_TARGET_VERSION),
+        );
     }
     let _guard = ValueSourceGuard::new(ValueSource::Cli, false);
     let options: Options =
@@ -83,6 +89,7 @@ impl From<SourceLocation> for Position {
 
 #[derive(Serialize)]
 pub struct Diagnostic {
+    pub template_effect: crate::template_effects::TemplateEffect,
     pub filename: String,
     pub code: String,
     pub name: String,
@@ -152,6 +159,9 @@ pub(crate) fn check(request: CheckRequest) -> Result<Vec<Diagnostic>, String> {
         .map(|diagnostic| {
             let range = diagnostic.range().unwrap_or_default();
             Diagnostic {
+                template_effect: crate::template_effects::classify(
+                    diagnostic.secondary_code_or_id(),
+                ),
                 filename: request.filename.clone(),
                 code: diagnostic.secondary_code_or_id().to_string(),
                 name: diagnostic.id().as_str().to_string(),

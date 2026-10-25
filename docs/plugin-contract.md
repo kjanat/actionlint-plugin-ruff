@@ -4,6 +4,30 @@ This is the implemented contract for `actionlint-plugin-ruff`.
 Actionlint owns shell selection, expression sanitization, source mapping, suppression, scheduling, and cancellation.
 Ruff owns Python analysis and configuration validation. The plugin receives one already-sanitized snippet per call.
 
+## Template provenance semantics
+
+The optional `kjanat:actionlint/template-effects@0.1.0` component interface returns each
+diagnostic together with a typed effect describing how expression substitution affects
+its validity. Its `contract()` returns that exact identifier. The original script-engine
+interface remains available. Core JSON `check` operation version 2 adds `template_effect`
+and requires the matching `template_contract` discovery field; operation version 1 and
+the physical memory ABI version 1 remain supported.
+Its self-contained request and diagnostic types use the same sanitized-source and Unicode
+coordinate semantics as script-engine; the two interfaces can evolve independently.
+
+Effects identify line length, complete references, generated names or parentheses,
+string contents, docstring summary, exported names, and percent-conversion slots.
+`none` explicitly preserves a finding. Hosts filter using the effect and recorded
+substitution ranges, never diagnostic codes or human-readable messages. In particular,
+export findings identify the exact exported string range. Hosts use a valid `s`
+conversion in percent-conversion masks, so synthetic unsupported-conversion findings
+do not require inspecting upstream message text.
+
+The Ruff adapter is reviewed against Ruff 0.17.0. Changing the linked engine version
+requires reviewing the effect mapping and range fixtures; an unreviewed engine is
+rejected. The Python default belongs to the engine and its generated schema. Hosts
+forward an explicit target only when configured or inferred from an interpreter.
+
 ## Typed script-engine component
 
 New integrations use `artifacts/plugin.component.wasm` or its gzip form. The component exports
@@ -20,12 +44,18 @@ Static `component.metadata.json` is embedded in the outer `actionlint.plugin` se
 `transport: "wasm-component"`, the interface name, the SHA-256 of LF-normalized WIT, the same plugin identity,
 engine version, rules and options schema returned by `describe()`. Packaging includes both raw and gzip
 digests in `SHA256SUMS`; the public host verifies metadata against the executable interface and descriptor.
+The WIT source digest records provenance; compatibility is checked structurally, so compatible
+independent implementations need not copy this repository's WIT formatting or comments.
 
 The guest targets `wasm32-unknown-unknown` and is componentized with the Cargo-locked `wit-component`
 encoder. It has no host imports: filesystem, credentials, clocks and network services are unavailable.
 The existing clock facade traps if analysis unexpectedly requests time.
 The public-loader tests check both exact packaged variants, typed configuration errors, Unicode/CRLF
-coordinates and workflow expression masking/source mapping. They also compare vendored WIT to the pinned host.
+coordinates and workflow expression masking/source mapping. Tests use the public host API, including
+an arbitrary provider identity and changed diagnostic presentation; they never read host source files.
+The integration module currently pins a host release predating template effects. Publishing this extension
+requires updating that pin to a released host with the optional interface; local verification uses a temporary
+module override, never a guest build dependency on a sibling checkout.
 
 The following core ABI remains supported independently for existing consumers.
 

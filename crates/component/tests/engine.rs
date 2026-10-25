@@ -4,6 +4,29 @@ use actionlint_plugin_ruff_component::exports::kjanat::actionlint::script_engine
 use serde_json::json;
 
 #[test]
+fn template_effects_are_typed_and_export_ranges_remain_precise() {
+    use actionlint_plugin_ruff_component::exports::kjanat::actionlint::template_effects as effects;
+    assert_eq!(
+        <Plugin as effects::Guest>::contract(),
+        actionlint_plugin_ruff::template_effects::CONTRACT
+    );
+    let outcome = <Plugin as effects::Guest>::check(effects::Request {
+        source: "__all__ = ['(_0)', 'missing']\nprint(unknown)\n".into(),
+        filename: "step.py".into(),
+        config: json!({"lint": {"select": ["F821", "F822"]}}).to_string(),
+    });
+    assert!(outcome.error.is_none(), "{:?}", outcome.error);
+    assert_eq!(outcome.diagnostics.len(), 3);
+    assert_eq!(outcome.diagnostics[0].effect, effects::Effect::ExportedName);
+    assert_eq!(outcome.diagnostics[1].effect, effects::Effect::ExportedName);
+    assert_eq!(outcome.diagnostics[2].effect, effects::Effect::OpaqueName);
+    assert!(
+        outcome.diagnostics[0].diagnostic.end_location.column
+            < outcome.diagnostics[1].diagnostic.location.column
+    );
+}
+
+#[test]
 fn typed_transport_preserves_unicode_diagnostics() {
     let outcome = Plugin::check(Request {
         source: "label = 'é🦀'; print(missing) # noqa\r\n".into(),

@@ -88,6 +88,9 @@ func TestPackagedEngineThroughActionlint(t *testing.T) {
 				t.Fatal("invalid Ruff selector accepted through public validator")
 			}
 			var backend analyzer.ScriptBackend = engine
+			if engine.ScriptDescriptor().TemplateContract != analyzer.TemplateEffectsContract {
+				t.Fatal("public core backend lost negotiated template contract")
+			}
 			findings, err := backend.Check(ctx, analyzer.ScriptRequest{
 				Source: "label = 'é🦀'; print(missing) # noqa\r\n", Filename: "workflow.step.py", Config: settings,
 			})
@@ -98,7 +101,7 @@ func TestPackagedEngineThroughActionlint(t *testing.T) {
 				t.Fatalf("want one unsuppressed F821 finding: %+v", findings)
 			}
 			finding := findings[0]
-			if finding.Code != "F821" || finding.Filename != "workflow.step.py" ||
+			if finding.Code != "F821" || finding.TemplateEffect != analyzer.TemplateEffectOpaqueName || finding.Filename != "workflow.step.py" ||
 				finding.Location != (analyzer.ScriptPosition{Row: 1, Column: 21}) ||
 				finding.EndLocation != (analyzer.ScriptPosition{Row: 1, Column: 28}) ||
 				!strings.Contains(finding.Message, "missing") {
@@ -169,20 +172,27 @@ func checkWorkflowMapping(t *testing.T, ctx context.Context, backend analyzer.Sc
 				"    steps:\r\n" +
 				"      - shell: python\r\n" +
 				"        run: |\r\n" +
-				"          label = 'é🦀'; print(missing) # noqa\r\n",
+				"          label = 'é🦀'; print(missing) # noqa\r\n" +
+				"          print(${{ github.run_number }})\r\n",
 		)}},
 		Options: analysis.Options{Ruff: analysis.Tool{Backend: backend}},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Diagnostics) != 1 {
-		t.Fatalf("want one mapped F821 finding: %+v", result.Diagnostics)
+	count := 0
+	for _, finding := range result.Diagnostics {
+		if finding.Rule != "ruff" {
+			continue
+		}
+		count++
+		if finding.Rule != "ruff" || finding.Code != "F821" || finding.Path != "ci.yml" ||
+			finding.Start.Line != 8 || finding.Start.Column != 31 ||
+			finding.End.Line != 8 || finding.End.Column != 38 {
+			t.Fatalf("public workflow adapter lost source range: %+v", finding)
+		}
 	}
-	finding := result.Diagnostics[0]
-	if finding.Rule != "ruff" || finding.Code != "F821" || finding.Path != "ci.yml" ||
-		finding.Start.Line != 8 || finding.Start.Column != 31 ||
-		finding.End.Line != 8 || finding.End.Column != 38 {
-		t.Fatalf("public workflow adapter lost source range: %+v", finding)
+	if count != 1 {
+		t.Fatalf("want one mapped Ruff finding: %+v", result.Diagnostics)
 	}
 }

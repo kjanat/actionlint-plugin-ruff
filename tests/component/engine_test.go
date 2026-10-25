@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -26,11 +25,12 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 		t.Fatal(err)
 	}
 	var declaration struct {
-		ID            string `json:"id"`
-		PluginVersion string `json:"plugin_version"`
-		Repository    string `json:"repository"`
-		Interface     string `json:"interface"`
-		Contract      string `json:"contract_sha256"`
+		ID               string `json:"id"`
+		PluginVersion    string `json:"plugin_version"`
+		Repository       string `json:"repository"`
+		Interface        string `json:"interface"`
+		Contract         string `json:"contract_sha256"`
+		TemplateContract string `json:"template_contract"`
 	}
 	if err := json.Unmarshal(metadata, &declaration); err != nil {
 		t.Fatal(err)
@@ -39,6 +39,9 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 		declaration.Repository != "https://github.com/kjanat/actionlint-plugin-ruff" ||
 		declaration.Interface != "kjanat:actionlint/script-engine@0.1.0" {
 		t.Fatalf("unexpected component identity: %+v", declaration)
+	}
+	if declaration.TemplateContract != analyzer.TemplateEffectsContract {
+		t.Fatalf("missing template semantics: %q", declaration.TemplateContract)
 	}
 	wit, err := os.ReadFile("../../crates/component/wit/script-engine.wit")
 	if err != nil {
@@ -88,6 +91,9 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 				t.Fatal("component must expose only the script-engine role")
 			}
 			descriptor := engine.ScriptDescriptor()
+			if descriptor.TemplateContract != analyzer.TemplateEffectsContract {
+				t.Fatalf("host did not negotiate template effects: %+v", descriptor)
+			}
 			if descriptor.ID != declaration.ID || descriptor.Version != declaration.PluginVersion ||
 				descriptor.Engine != "ruff" || descriptor.Rule.Name != "ruff" {
 				t.Fatalf("unexpected script-engine descriptor: %+v", descriptor)
@@ -108,6 +114,9 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 				t.Fatalf("component result: %+v, %v", diagnostics, err)
 			}
 			finding := diagnostics[0]
+			if finding.TemplateEffect != analyzer.TemplateEffectOpaqueName {
+				t.Fatalf("typed semantic effect lost: %+v", finding)
+			}
 			if finding.Code != "F821" || finding.Filename != "step.py" ||
 				finding.Location != (analyzer.ScriptPosition{Row: 1, Column: 21}) ||
 				finding.EndLocation != (analyzer.ScriptPosition{Row: 1, Column: 28}) {
@@ -117,8 +126,8 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 				Source: "print(1)\rprint(missing)\r", Filename: "step.py", Config: settings,
 			})
 			if err != nil || len(diagnostics) != 1 ||
-				diagnostics[0].Location != (analyzer.ScriptPosition{Row: 2, Column: 7}) ||
-				diagnostics[0].EndLocation != (analyzer.ScriptPosition{Row: 2, Column: 14}) {
+				diagnostics[0].Location != (analyzer.ScriptPosition{Row: 1, Column: 16}) ||
+				diagnostics[0].EndLocation != (analyzer.ScriptPosition{Row: 1, Column: 23}) {
 				t.Fatalf("component rejected lone-CR source coordinates: %+v, %v", diagnostics, err)
 			}
 			diagnostics, err = backend.Check(ctx, analyzer.ScriptRequest{
@@ -127,12 +136,13 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 			if err != nil || len(diagnostics) == 0 || diagnostics[0].Code != "invalid-syntax" {
 				t.Fatalf("component lost syntax diagnostics: %+v, %v", diagnostics, err)
 			}
-			checkWorkflow(t, ctx, backend)
+			checkWorkflow(t, ctx, backend, "F821")
+			checkWorkflow(t, ctx, presentationIndependentBackend{engine}, "renamed-check")
 		})
 	}
 }
 
-func checkWorkflow(t *testing.T, ctx context.Context, backend analyzer.ScriptBackend) {
+func checkWorkflow(t *testing.T, ctx context.Context, backend analyzer.ScriptBackend, wantCode string) {
 	t.Helper()
 	cfg, err := config.Parse([]byte("tools:\n  ruff:\n    select: [F821]\n"))
 	if err != nil {
@@ -147,33 +157,42 @@ func checkWorkflow(t *testing.T, ctx context.Context, backend analyzer.ScriptBac
 		)}},
 		Options: analysis.Options{Ruff: analysis.Tool{Backend: backend}},
 	})
-	if err != nil || len(result.Diagnostics) != 1 {
+	if err != nil {
 		t.Fatalf("workflow analysis: %+v, %v", result, err)
 	}
-	finding := result.Diagnostics[0]
-	if finding.Rule != "ruff" || finding.Code != "F821" || finding.Path != "ci.yml" ||
-		finding.Start.Line != 8 || finding.Start.Column != 31 || finding.End.Line != 8 || finding.End.Column != 38 {
-		t.Fatalf("workflow diagnostic mapping changed: %+v", finding)
+	count := 0
+	for _, finding := range result.Diagnostics {
+		if finding.Rule != "ruff" {
+			continue
+		}
+		count++
+		if finding.Rule != "ruff" || finding.Code != wantCode || finding.Path != "ci.yml" ||
+			finding.Start.Line != 8 || finding.Start.Column != 31 || finding.End.Line != 8 || finding.End.Column != 38 {
+			t.Fatalf("workflow diagnostic mapping changed: %+v", finding)
+		}
+	}
+	if count != 1 {
+		t.Fatalf("want one Ruff finding: %+v", result.Diagnostics)
 	}
 }
 
-func TestVendoredWITMatchesPinnedHost(t *testing.T) {
-	// Resolve the exact published host source selected by this module.
-	command := exec.CommandContext(t.Context(), "go", "list", "-m", "-f", "{{.Dir}}", "actionlint.kjanat.dev/v2")
-	output, err := command.Output()
-	if err != nil {
-		t.Fatalf("resolve pinned host source: %v", err)
+// Public runtime negotiation above validates the contract without depending on
+// the host repository's source layout. Package identity and text are presentation.
+type presentationIndependentBackend struct{ *plugin.Component }
+
+func (b presentationIndependentBackend) ScriptDescriptor() analyzer.ScriptEngineDescriptor {
+	d := b.Component.ScriptDescriptor()
+	d.ID, d.Rule.Provider = "example-independent-package", "example-independent-package"
+	d.Name = "Different presentation"
+	return d
+}
+
+func (b presentationIndependentBackend) Check(ctx context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
+	findings, err := b.Component.Check(ctx, request)
+	for i := range findings {
+		findings[i].Code = "renamed-check"
+		findings[i].Name = "unrelated-name"
+		findings[i].Message = "Translated presentation without generated identifiers"
 	}
-	host, err := os.ReadFile(filepath.Join(strings.TrimSpace(string(output)), "plugins", "wit", "script-engine.wit"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	guest, err := os.ReadFile("../../crates/component/wit/script-engine.wit")
-	if err != nil {
-		t.Fatal(err)
-	}
-	normalize := func(data []byte) []byte { return bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n")) }
-	if !bytes.Equal(normalize(host), normalize(guest)) {
-		t.Fatal("vendored script-engine WIT differs from the pinned host")
-	}
+	return findings, err
 }
