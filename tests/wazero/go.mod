@@ -3,14 +3,14 @@ module actionlint-plugin-ruff/wasm-test
 go 1.27.2
 
 require (
-	actionlint.kjanat.dev/v2 v2.0.0-20261020183608-73105c6dc5ce
+	actionlint.kjanat.dev/v2 v2.0.0-20261025145625-a935cfc4711d
 	github.com/tetratelabs/wazero v1.12.0
 )
 
 require (
 	github.com/bmatcuk/doublestar/v4 v4.10.3 // indirect
+	github.com/kjanat/wacogo v0.1.1 // indirect
 	github.com/mattn/go-shellwords v1.0.16 // indirect
-	github.com/partite-ai/wacogo v0.0.0-20261016032519-b3984dc3d485 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
