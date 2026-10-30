@@ -1,7 +1,7 @@
 # actionlint-plugin-ruff
 
 A Rust wrapper around Ruff for Python snippets in actionlint. New integrations use the typed
-`kjanat:actionlint/script-engine@0.1.0` WebAssembly component. The legacy core module with
+`kjanat:actionlint/script-engine@0.2.0` WebAssembly component. The legacy core module with
 `check`, `validate_config`, and `metadata` exports remains available for existing hosts.
 Both transports share the same Rust analysis and option-validation implementation.
 
@@ -10,10 +10,16 @@ rule catalogs or checked-in Ruff schemas. `Cargo.toml` uses Ruff's published cra
 and companion crates 0.0.17. `Cargo.lock` records the resolved versions and package checksums.
 
 The public actionlint loader checks the actual packaged artifacts. The core module also runs through independent
-Go, Rust, and TypeScript hosts. The component uses the vendored [WIT interface](crates/component/wit/script-engine.wit);
+Go, Rust, and TypeScript hosts. The component uses the vendored [WIT interface](vendor/actionlint-extension-api/wit/script-engine.wit);
 changing host language does not require rebuilding either portable artifact.
 CI runs both packaged transports through actionlint on Linux, macOS, and Windows using the same artifact bytes,
 including cold loading with the host's default limits.
+
+The public SDK is vendored under `vendor/actionlint-extension-api` from actionlint
+commit `8836017f3c5150fcd6eba7b4ae64658b2d5c53e1`. The Go host tests select the
+same commit. The [snapshot manifest](vendor/actionlint-extension-api.snapshot.json)
+records its source identity. Builds need no sibling actionlint checkout or module
+replacement. Update the snapshot as a unit; never edit its WIT independently.
 
 ## Build and verify
 

@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "actionlint-plugin-ruff"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ruff_db",
  "ruff_linter",
@@ -22,7 +22,7 @@ dependencies = [
 
 [[package]]
 name = "actionlint-plugin-ruff-component"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "actionlint-plugin-ruff",
  "serde_json",

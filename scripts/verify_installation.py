@@ -22,7 +22,7 @@ jobs:
 
 def contract_identity(wit):
     checksum = hashlib.sha256(wit.replace(b"\r\n", b"\n")).hexdigest()
-    return "kjanat:actionlint/script-engine@0.1.0#sha256=" + checksum
+    return "kjanat:actionlint/script-engine@0.2.0#sha256=" + checksum
 
 
 def run(binary, arguments, root, environment, expected=0):
@@ -105,8 +105,8 @@ def verify(binary, version, checksum):
             "contract": contract_identity(
                 (
                     Path(__file__).resolve().parents[1]
-                    / "crates"
-                    / "component"
+                    / "vendor"
+                    / "actionlint-extension-api"
                     / "wit"
                     / "script-engine.wit"
                 ).read_bytes()
