@@ -8,7 +8,8 @@ Ruff owns Python analysis and configuration validation. The plugin receives one 
 
 The optional `kjanat:actionlint/template-effects@0.2.0` component interface returns each
 diagnostic together with a typed effect describing how expression substitution affects
-its validity. Its `contract()` returns the semantic identifier `kjanat:actionlint/template-effects@0.1.0`. The original script-engine
+its validity. Its `contract()` returns the semantic identifier `kjanat:actionlint/template-effects@0.1.0`. The original
+script-engine
 interface remains available. Core JSON `check` operation version 2 adds `template_effect`
 and requires the matching `template_contract` discovery field; operation version 1 and
 the physical memory ABI version 1 remain supported.

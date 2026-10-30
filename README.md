@@ -10,7 +10,8 @@ rule catalogs or checked-in Ruff schemas. `Cargo.toml` uses Ruff's published cra
 and companion crates 0.0.17. `Cargo.lock` records the resolved versions and package checksums.
 
 The public actionlint loader checks the actual packaged artifacts. The core module also runs through independent
-Go, Rust, and TypeScript hosts. The component uses the vendored [WIT interface](vendor/actionlint-extension-api/wit/script-engine.wit);
+Go, Rust, and TypeScript hosts. The component uses the vendored
+[WIT interface](vendor/actionlint-extension-api/wit/script-engine.wit);
 changing host language does not require rebuilding either portable artifact.
 CI runs both packaged transports through actionlint on Linux, macOS, and Windows using the same artifact bytes,
 including cold loading with the host's default limits.
