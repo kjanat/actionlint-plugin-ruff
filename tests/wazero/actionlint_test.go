@@ -144,7 +144,7 @@ func packagedChecksums(t *testing.T, directory string) map[string]string {
 		t.Fatal(err)
 	}
 	checksums := map[string]string{}
-	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(string(data)), "\n") {
 		fields := strings.Fields(line)
 		if len(fields) != 2 {
 			t.Fatalf("invalid package checksum line %q", line)

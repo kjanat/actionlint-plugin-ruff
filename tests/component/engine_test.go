@@ -37,13 +37,13 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 	}
 	if declaration.ID != "actionlint-plugin-ruff" ||
 		declaration.Repository != "https://github.com/kjanat/actionlint-plugin-ruff" ||
-		declaration.Interface != "kjanat:actionlint/script-engine@0.1.0" {
+		declaration.Interface != "kjanat:actionlint/script-engine@0.2.0" {
 		t.Fatalf("unexpected component identity: %+v", declaration)
 	}
 	if declaration.TemplateContract != analyzer.TemplateEffectsContract {
 		t.Fatalf("missing template semantics: %q", declaration.TemplateContract)
 	}
-	wit, err := os.ReadFile("../../crates/component/wit/script-engine.wit")
+	wit, err := os.ReadFile("../../vendor/actionlint-extension-api/wit/script-engine.wit")
 	if err != nil {
 		t.Fatal(err)
 	}

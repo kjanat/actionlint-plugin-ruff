@@ -13,14 +13,14 @@ class InstallationProofTests(unittest.TestCase):
     def test_contract_includes_packaged_wit_digest_with_lf_normalization(self):
         wit = (
             Path(__file__).resolve().parents[1]
-            / "crates"
-            / "component"
+            / "vendor"
+            / "actionlint-extension-api"
             / "wit"
             / "script-engine.wit"
         ).read_bytes()
         expected = (
-            "kjanat:actionlint/script-engine@0.1.0#sha256="
-            "cb0d4c86f1c4e9e8029368b8686f5da542d8e6e542483aa6dbce2510a35eba86"
+            "kjanat:actionlint/script-engine@0.2.0#sha256="
+            "c20d7e9e516166576fdf19bfd86e0843838179b12ad55350c33db8d04c2eaa9b"
         )
         self.assertEqual(verify_installation.contract_identity(wit), expected)
         self.assertEqual(
@@ -35,7 +35,7 @@ class InstallationProofTests(unittest.TestCase):
         checksum = hashlib.sha256(data).hexdigest()
         wit = (
             Path(__file__).resolve().parents[1]
-            / "crates/component/wit/script-engine.wit"
+            / "vendor/actionlint-extension-api/wit/script-engine.wit"
         ).read_bytes()
         for fault in (None, "pin", "cache", "lock"):
             calls = []

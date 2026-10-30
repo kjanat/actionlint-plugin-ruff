@@ -6,9 +6,10 @@ Ruff owns Python analysis and configuration validation. The plugin receives one 
 
 ## Template provenance semantics
 
-The optional `kjanat:actionlint/template-effects@0.1.0` component interface returns each
+The optional `kjanat:actionlint/template-effects@0.2.0` component interface returns each
 diagnostic together with a typed effect describing how expression substitution affects
-its validity. Its `contract()` returns that exact identifier. The original script-engine
+its validity. Its `contract()` returns the semantic identifier `kjanat:actionlint/template-effects@0.1.0`. The original
+script-engine
 interface remains available. Core JSON `check` operation version 2 adds `template_effect`
 and requires the matching `template_contract` discovery field; operation version 1 and
 the physical memory ABI version 1 remain supported.
@@ -31,8 +32,8 @@ forward an explicit target only when configured or inferred from an interpreter.
 ## Typed script-engine component
 
 New integrations use `artifacts/plugin.component.wasm` or its gzip form. The component exports
-`kjanat:actionlint/script-engine@0.1.0`, defined in
-[`crates/component/wit/script-engine.wit`](../crates/component/wit/script-engine.wit).
+`kjanat:actionlint/script-engine@0.2.0`, defined in
+[`vendor/actionlint-extension-api/wit/script-engine.wit`](../vendor/actionlint-extension-api/wit/script-engine.wit).
 
 `describe()` returns typed plugin/engine identity, supported shells and one rule descriptor.
 `validate-config()` accepts the engine's JSON options object and returns a typed success/error result.
@@ -53,9 +54,8 @@ The existing clock facade traps if analysis unexpectedly requests time.
 The public-loader tests check both exact packaged variants, typed configuration errors, Unicode/CRLF
 coordinates and workflow expression masking/source mapping. Tests use the public host API, including
 an arbitrary provider identity and changed diagnostic presentation; they never read host source files.
-The integration module currently pins a host release predating template effects. Publishing this extension
-requires updating that pin to a released host with the optional interface; local verification uses a temporary
-module override, never a guest build dependency on a sibling checkout.
+The integration modules pin actionlint commit `8836017f3c5150fcd6eba7b4ae64658b2d5c53e1`, the same revision
+as the vendored SDK; guest builds never depend on a sibling checkout.
 
 The following core ABI remains supported independently for existing consumers.
 

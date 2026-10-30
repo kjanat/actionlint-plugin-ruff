@@ -25,7 +25,7 @@ Deno.test('component metadata keeps its typed interface separate from the core A
 		id: 'actionlint-plugin-ruff',
 		plugin_version: '0.1.0',
 		transport: 'wasm-component',
-		interface: 'kjanat:actionlint/script-engine@0.1.0',
+		interface: 'kjanat:actionlint/script-engine@0.2.0',
 		contract_sha256: 'a'.repeat(64),
 	};
 	const packaged = withComponentMetadata(component, encode(metadata));
