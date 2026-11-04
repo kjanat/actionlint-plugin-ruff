@@ -59,7 +59,7 @@ jobs:
         run: cargo test --locked --manifest-path tests/rust-host/Cargo.toml;
           cargo clippy --locked --manifest-path tests/rust-host/Cargo.toml --all-targets -- -D warnings
       - name: Formatting
-        uses: kjanat/dprint-check@29c42153a7346f4d7315883ff7722cfe22cd510c # v3
+        uses: kjanat/dprint-check@b6a885d3403db5e40ed59f2c27917d758381f577 # v3
       - name: Record tested package digest
         id: package
         run: python3 -B scripts/release.py verify
