@@ -1,26 +1,27 @@
 # actionlint-plugin-ruff
 
 A Rust wrapper around Ruff for Python snippets in actionlint. New integrations use the typed
-`kjanat:actionlint/script-engine@0.2.0` WebAssembly component. The legacy core module with
-`check`, `validate_config`, and `metadata` exports remains available for existing hosts.
+`kjanat:actionlint/script-engine@0.2.0` WebAssembly component. The core JSON transport exports
+`check`, `validate_config`, and `metadata`.
 Both transports share the same Rust analysis and option-validation implementation.
 
 Ruff owns option deserialization, rule selection, Python targets, parsing, and diagnostics. There are no handwritten
 rule catalogs or checked-in Ruff schemas. `Cargo.toml` uses Ruff's published crates.io packages: `ruff_linter` 0.17.0
 and companion crates 0.0.17. `Cargo.lock` records the resolved versions and package checksums.
 
-The public actionlint loader checks the actual packaged artifacts. The core module also runs through independent
+The actionlint host tests check the actual packaged artifacts. The core module also runs through independent
 Go, Rust, and TypeScript hosts. The component uses the vendored
 [WIT interface](vendor/actionlint-extension-api/wit/script-engine.wit);
 changing host language does not require rebuilding either portable artifact.
 CI runs both packaged transports through actionlint on Linux, macOS, and Windows using the same artifact bytes,
 including cold loading with the host's default limits.
 
-The public SDK is vendored under `vendor/actionlint-extension-api` from actionlint
-commit `8836017f3c5150fcd6eba7b4ae64658b2d5c53e1`. The Go host tests select the
-same commit. The [snapshot manifest](vendor/actionlint-extension-api.snapshot.json)
-records its source identity. Builds need no sibling actionlint checkout or module
-replacement. Update the snapshot as a unit; never edit its WIT independently.
+The vendored SDK and Go host tests select actionlint commit
+`99a250b29aaadfdb2d95a0c6ab954d3f9f11bdc8`. The
+[snapshot manifest](vendor/actionlint-extension-api.snapshot.json) records the source blobs and hashes without local
+patches. The unpublished Go test modules use the actionlint module prefix to access its private host packages.
+Distributed plugins use the Wasm contracts. Builds need no sibling actionlint checkout or module replacement.
+Update the snapshot as a unit; never edit its WIT independently.
 
 ## Build and verify
 
@@ -162,23 +163,23 @@ actionlint check --plugin /path/to/artifacts/plugin.component.wasm
 ```
 
 The host recognizes the typed script-engine role and selects this engine as its Ruff backend.
-Older hosts can continue loading `plugin.wasm` through the core ABI.
+The core JSON transport loads `plugin.wasm`.
 Workflow expression masking, script selection, YAML
-source mapping, severity and suppressions remain host responsibilities. No Python
+source mapping, severity and suppressions are host responsibilities. No Python
 or native Ruff executable is needed for this backend. `tools.ruff` supplies engine
 configuration. An explicitly selected competing backend is an error.
 
 Metadata now includes the shared rule descriptor (category, subcategory, maturity,
-provider, help, documentation, fix availability and the Ruff-generated options
+provider, help, documentation and the Ruff-generated options
 schema). The typed component exports only the script-engine role, not a workflow analyzer.
-The core JSON ABI remains version 1. Workflow semantics remain in actionlint.
+The core JSON ABI uses version 1. Actionlint supplies workflow semantics.
 
 ## Publication
 
 Push a signed `vX.Y.Z` tag after setting both package versions (`Cargo.toml` and
 `crates/component/Cargo.toml`) to `X.Y.Z` and refreshing `Cargo.lock`. Enable GitHub release immutability first.
 The Release workflow runs the full contract CI against that tag, then uploads the
-exact tested component, legacy core module, gzip variants, metadata, schema, and
+exact tested component, core module, gzip variants, metadata, schema, and
 licenses. `SHA256SUMS` binds every package file. Existing differing assets are
 never replaced; an identical incomplete draft can resume.
 
@@ -187,8 +188,7 @@ Only `plugin.component.wasm` is submitted to the registry. The workflow waits fo
 install the exact version into a fresh project, check its digest and identity,
 produce the expected F821 finding, and repeat checking with network proxies blocked.
 The publication and installation receipts are retained as workflow artifacts.
-A GitHub release alone, or a pending registry submission, is not publication success.
+A GitHub release or a pending registry submission does not confirm publication.
 
 Rerun the Release workflow on the same tag after a recoverable failure. No workflow
-creates tags or silently upgrades an existing release. Core artifacts remain
-available for hosts using the version-1 JSON ABI.
+creates tags or silently upgrades an existing release. Core artifacts use the version-1 JSON ABI.

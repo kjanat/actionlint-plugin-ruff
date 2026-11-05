@@ -12,10 +12,13 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/v2/analysis"
-	"actionlint.kjanat.dev/v2/analyzer"
-	"actionlint.kjanat.dev/v2/config"
-	"actionlint.kjanat.dev/v2/plugin"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	componenthost "actionlint.kjanat.dev/v2/internal/plugins/execution/component"
+
+	"actionlint.kjanat.dev/v2/internal/checking"
+	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 
 func TestPackagedScriptEngineComponent(t *testing.T) {
@@ -40,7 +43,7 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 		declaration.Interface != "kjanat:actionlint/script-engine@0.2.0" {
 		t.Fatalf("unexpected component identity: %+v", declaration)
 	}
-	if declaration.TemplateContract != analyzer.TemplateEffectsContract {
+	if declaration.TemplateContract != checkinputs.TemplateEffectsContract {
 		t.Fatalf("missing template semantics: %q", declaration.TemplateContract)
 	}
 	wit, err := os.ReadFile("../../vendor/actionlint-extension-api/wit/script-engine.wit")
@@ -70,15 +73,15 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 			if !strings.Contains(string(checksums), digestHex+"  "+filename+"\n") {
 				t.Fatal("component bytes disagree with published checksums")
 			}
-			info, err := plugin.Inspect(ctx, path, plugin.ArtifactOptions{})
+			inspected, err := pluginartifact.Resolve(ctx, path, pluginartifact.Options{})
 			if err != nil {
 				t.Fatal(err)
 			}
-			if info.Kind != plugin.ComponentArtifact || info.SHA256 != digestHex || !bytes.Equal(info.Metadata, metadata) {
+			if inspected.Info.Kind != pluginartifact.Component || inspected.Info.SHA256 != digestHex || !bytes.Equal(inspected.Info.Metadata, metadata) {
 				t.Fatal("public inspection lost component metadata or byte identity")
 			}
 			t.Logf("%s sha256:%s API:%s#sha256=%s", filename, digestHex, declaration.Interface, declaration.Contract)
-			engine, err := plugin.Load(ctx, path, plugin.Options{Timeout: time.Minute})
+			engine, err := componenthost.Load(ctx, path, componenthost.Options{Timeout: time.Minute})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -91,14 +94,14 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 				t.Fatal("component must expose only the script-engine role")
 			}
 			descriptor := engine.ScriptDescriptor()
-			if descriptor.TemplateContract != analyzer.TemplateEffectsContract {
+			if descriptor.TemplateContract != checkinputs.TemplateEffectsContract {
 				t.Fatalf("host did not negotiate template effects: %+v", descriptor)
 			}
 			if descriptor.ID != declaration.ID || descriptor.Version != declaration.PluginVersion ||
 				descriptor.Engine != "ruff" || descriptor.Rule.Name != "ruff" {
 				t.Fatalf("unexpected script-engine descriptor: %+v", descriptor)
 			}
-			var validator analyzer.ScriptConfigValidator = engine
+			var validator checkinputs.ScriptConfigValidator = engine
 			settings := json.RawMessage(`{"lint":{"select":["F821"]}}`)
 			if err := validator.ValidateConfig(ctx, settings); err != nil {
 				t.Fatal(err)
@@ -106,31 +109,31 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 			if err := validator.ValidateConfig(ctx, json.RawMessage(`{"lint":{"select":["FAKE999"]}}`)); err == nil {
 				t.Fatal("component accepted invalid engine options")
 			}
-			var backend analyzer.ScriptBackend = engine
-			diagnostics, err := backend.Check(ctx, analyzer.ScriptRequest{
+			var backend checkinputs.ScriptBackend = engine
+			diagnostics, err := backend.Check(ctx, checkinputs.ScriptRequest{
 				Source: "label = 'é🦀'; print(missing) # noqa\r\n", Filename: "step.py", Config: settings,
 			})
 			if err != nil || len(diagnostics) != 1 {
 				t.Fatalf("component result: %+v, %v", diagnostics, err)
 			}
 			finding := diagnostics[0]
-			if finding.TemplateEffect != analyzer.TemplateEffectOpaqueName {
+			if finding.TemplateEffect != checkinputs.TemplateEffectOpaqueName {
 				t.Fatalf("typed semantic effect lost: %+v", finding)
 			}
 			if finding.Code != "F821" || finding.Filename != "step.py" ||
-				finding.Location != (analyzer.ScriptPosition{Row: 1, Column: 21}) ||
-				finding.EndLocation != (analyzer.ScriptPosition{Row: 1, Column: 28}) {
+				finding.Location != (checkinputs.ScriptPosition{Row: 1, Column: 21}) ||
+				finding.EndLocation != (checkinputs.ScriptPosition{Row: 1, Column: 28}) {
 				t.Fatalf("component changed Unicode diagnostic range: %+v", finding)
 			}
-			diagnostics, err = backend.Check(ctx, analyzer.ScriptRequest{
+			diagnostics, err = backend.Check(ctx, checkinputs.ScriptRequest{
 				Source: "print(1)\rprint(missing)\r", Filename: "step.py", Config: settings,
 			})
 			if err != nil || len(diagnostics) != 1 ||
-				diagnostics[0].Location != (analyzer.ScriptPosition{Row: 1, Column: 16}) ||
-				diagnostics[0].EndLocation != (analyzer.ScriptPosition{Row: 1, Column: 23}) {
+				diagnostics[0].Location != (checkinputs.ScriptPosition{Row: 1, Column: 16}) ||
+				diagnostics[0].EndLocation != (checkinputs.ScriptPosition{Row: 1, Column: 23}) {
 				t.Fatalf("component rejected lone-CR source coordinates: %+v, %v", diagnostics, err)
 			}
-			diagnostics, err = backend.Check(ctx, analyzer.ScriptRequest{
+			diagnostics, err = backend.Check(ctx, checkinputs.ScriptRequest{
 				Source: "def broken(\n", Filename: "step.py", Config: settings,
 			})
 			if err != nil || len(diagnostics) == 0 || diagnostics[0].Code != "invalid-syntax" {
@@ -142,21 +145,19 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 	}
 }
 
-func checkWorkflow(t *testing.T, ctx context.Context, backend analyzer.ScriptBackend, wantCode string) {
+func checkWorkflow(t *testing.T, ctx context.Context, backend checkinputs.ScriptBackend, wantCode string) {
 	t.Helper()
-	cfg, err := config.Parse([]byte("tools:\n  ruff:\n    select: [F821]\n"))
+	cfg, err := checking.ConfigurationRules().Parse([]byte("tools:\n  ruff:\n    select: [F821]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := analysis.Analyze(ctx, analysis.Request{
-		Sources: []analysis.Source{{Path: "ci.yml", Config: cfg, Content: []byte(
+	result, err := checking.Analyze(ctx, checking.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Backend: backend}})},
+		[]workspace.Source{{Path: "ci.yml", Config: cfg, Content: []byte(
 			"on: push\r\njobs:\r\n  test:\r\n    runs-on: ubuntu-latest\r\n    steps:\r\n" +
 				"      - shell: python\r\n        run: |\r\n" +
 				"          label = 'é🦀'; print(missing) # noqa\r\n" +
 				"          print(${{ github.run_number }})\r\n",
-		)}},
-		Options: analysis.Options{Ruff: analysis.Tool{Backend: backend}},
-	})
+		)}})
 	if err != nil {
 		t.Fatalf("workflow analysis: %+v, %v", result, err)
 	}
@@ -176,19 +177,19 @@ func checkWorkflow(t *testing.T, ctx context.Context, backend analyzer.ScriptBac
 	}
 }
 
-// Public runtime negotiation above validates the contract without depending on
-// the host repository's source layout. Package identity and text are presentation.
-type presentationIndependentBackend struct{ *plugin.Component }
+// Runtime negotiation validates the plugin contract. Changing package identity
+// or display text must not change template handling or source mapping.
+type presentationIndependentBackend struct{ *componenthost.Plugin }
 
-func (b presentationIndependentBackend) ScriptDescriptor() analyzer.ScriptEngineDescriptor {
-	d := b.Component.ScriptDescriptor()
+func (b presentationIndependentBackend) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
+	d := b.Plugin.ScriptDescriptor()
 	d.ID, d.Rule.Provider = "example-independent-package", "example-independent-package"
 	d.Name = "Different presentation"
 	return d
 }
 
-func (b presentationIndependentBackend) Check(ctx context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
-	findings, err := b.Component.Check(ctx, request)
+func (b presentationIndependentBackend) Check(ctx context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+	findings, err := b.Plugin.Check(ctx, request)
 	for i := range findings {
 		findings[i].Code = "renamed-check"
 		findings[i].Name = "unrelated-name"
