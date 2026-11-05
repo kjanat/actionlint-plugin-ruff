@@ -9,6 +9,7 @@ homepage      = "https://github.com/kjanat/actionlint-plugin-ruff"
 repository    = "https://github.com/kjanat/actionlint-plugin-ruff"
 license       = "MIT"
 publish       = false
+default-run   = "ruff-plugin"
 
 [workspace]
 resolver = "3"
@@ -17,6 +18,10 @@ exclude  = ["tests/rust-host"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "ruff-plugin"
+path = "src/main.rs"
 
 [dependencies]
 ruff_linter = { version = "0.17.0" }

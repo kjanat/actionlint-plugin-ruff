@@ -18,9 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         _ => {
-            return Err(
-                "usage: actionlint-plugin-ruff [check|validate-config|metadata|schema]".into(),
-            );
+            return Err("usage: ruff-plugin [check|validate-config|metadata|schema]".into());
         }
     };
     serde_json::to_writer(io::stdout().lock(), &response)?;

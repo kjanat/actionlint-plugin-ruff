@@ -1,4 +1,4 @@
-module actionlint.kjanat.dev/v2/plugins/ruff/wazerotests
+module actionlint.kjanat.dev/v2/plugins/ruff/tests/wazero
 
 go 1.27.2
 

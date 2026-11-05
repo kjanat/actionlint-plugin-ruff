@@ -1,4 +1,4 @@
-module actionlint.kjanat.dev/v2/plugins/ruff/componenttests
+module actionlint.kjanat.dev/v2/plugins/ruff/tests/component
 
 go 1.27.2
 
