@@ -15,7 +15,6 @@ export interface RuleDescriptor {
 	explanation: string;
 	help: string;
 	documentation_url: string;
-	fix_availability: string;
 	options_schema: unknown;
 }
 

@@ -86,7 +86,6 @@ pub struct RuleDescriptor {
     pub explanation: String,
     pub help: String,
     pub documentation_url: String,
-    pub fix_availability: String,
     pub options_schema: Value,
 }
 
@@ -104,7 +103,6 @@ pub fn rule_descriptor() -> RuleDescriptor {
             "Correct the reported Python code or configure tools.ruff.select and tools.ruff.ignore."
                 .into(),
         documentation_url: "https://docs.astral.sh/ruff/rules/".into(),
-        fix_availability: "none".into(),
         options_schema: config_schema(),
     }
 }
