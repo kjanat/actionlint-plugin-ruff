@@ -5,7 +5,7 @@
 "github:kjanat/runner"    = "0.28.0"
 "github:rvben/rumdl"      = "0.2.79"
 "github:tombi-toml/tombi" = "1.8.4"
-deno                      = "2.9.7"
+deno                      = "2.9.8"
 go                        = "1.27.2"
 golangci-lint             = "2.14.0"
 
