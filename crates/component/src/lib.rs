@@ -213,6 +213,16 @@ pub fn descriptor() -> api::Descriptor {
     }
 }
 
+fn hex_lower(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        out.push(char::from(HEX[usize::from(byte >> 4)]));
+        out.push(char::from(HEX[usize::from(byte & 0x0f)]));
+    }
+    out
+}
+
 /// Discovery metadata records the packaged component's WIT source provenance.
 pub fn metadata() -> Value {
     let mut value = engine::metadata();
@@ -221,14 +231,11 @@ pub fn metadata() -> Value {
     object.remove("interfaces");
     value["transport"] = json!("wasm-component");
     value["interface"] = json!("kjanat:actionlint/script-engine@0.2.0");
-    value["contract_sha256"] = json!(format!(
-        "{:x}",
-        Sha256::digest(
-            include_str!("../../../vendor/actionlint-extension-api/wit/script-engine.wit")
-                .replace("\r\n", "\n")
-                .as_bytes()
-        )
-    ));
+    value["contract_sha256"] = json!(hex_lower(&Sha256::digest(
+        include_str!("../../../vendor/actionlint-extension-api/wit/script-engine.wit")
+            .replace("\r\n", "\n")
+            .as_bytes()
+    )));
     value["capabilities"]["script_shells"] = json!(["python"]);
     value
 }
