@@ -4,7 +4,7 @@
 [tools]
 "github:kjanat/runner"    = "0.28.0"
 "github:rvben/rumdl"      = "0.3.2"
-"github:tombi-toml/tombi" = "1.8.4"
+"github:tombi-toml/tombi" = "1.10.0"
 deno                      = "2.9.8"
 go                        = "1.27.3"
 golangci-lint             = "2.14.0"
