@@ -33,7 +33,7 @@ ruff_python_index   = { version = "0.0.17" }
 ruff_python_parser  = { version = "0.0.17" }
 ruff_ranged_value   = { version = "0.0.17" }
 ruff_source_file    = { version = "0.0.17" }
-ruff_workspace      = { version = "0.0.17", features = ["schemars"] }
+ruff_workspace      = { version = "0.0.21", features = ["schemars"] }
 
 schemars   = { version = "1.2.3" }
 serde      = { version = "1.0", features = ["derive"] }
