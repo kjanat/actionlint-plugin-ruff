@@ -29,7 +29,7 @@ ruff_linter = { version = "0.17.0" }
 ruff_db             = { version = "0.0.17" }
 ruff_python_ast     = { version = "0.0.17" }
 ruff_python_codegen = { version = "0.0.17" }
-ruff_python_index   = { version = "0.0.17" }
+ruff_python_index   = { version = "0.0.21" }
 ruff_python_parser  = { version = "0.0.17" }
 ruff_ranged_value   = { version = "0.0.17" }
 ruff_source_file    = { version = "0.0.17" }
