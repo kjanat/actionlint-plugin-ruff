@@ -8,12 +8,12 @@ version = "0.2.0"
 dependencies = [
  "ruff_db",
  "ruff_linter",
- "ruff_python_ast",
+ "ruff_python_ast 0.0.17",
  "ruff_python_codegen",
  "ruff_python_index",
- "ruff_python_parser",
+ "ruff_python_parser 0.0.21",
  "ruff_ranged_value",
- "ruff_source_file",
+ "ruff_source_file 0.0.17",
  "ruff_workspace",
  "schemars",
  "serde",
@@ -556,6 +556,12 @@ dependencies = [
  "cfg-if",
  "windows-sys",
 ]
+
+[[package]]
+name = "fastrand"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
 name = "fern"
@@ -1310,13 +1316,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "phf"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "010378780309880b08997fae13be7834dba947d36393bd372f2b1556deb2a2f6"
+dependencies = [
+ "phf_shared 0.14.0",
+]
+
+[[package]]
 name = "phf_codegen"
 version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aef8048c789fa5e851558d709946d6d79a8ff88c0440c587967f8e94bfb1216a"
 dependencies = [
- "phf_generator",
+ "phf_generator 0.11.3",
  "phf_shared 0.11.3",
+]
+
+[[package]]
+name = "phf_codegen"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41b585a510fb76fdebead6897982ef2a03a21d8e6cbcca904999742a4afc6ffe"
+dependencies = [
+ "phf_generator 0.14.0",
+ "phf_shared 0.14.0",
 ]
 
 [[package]]
@@ -1327,6 +1352,16 @@ checksum = "3c80231409c20246a13fddb31776fb942c38553c51e871f8cbd687a4cfb5843d"
 dependencies = [
  "phf_shared 0.11.3",
  "rand 0.8.8",
+]
+
+[[package]]
+name = "phf_generator"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aeb62e0959d5a1bebc965f4d15d9e2b7cea002b6b0f5ba8cde6cc26738467100"
+dependencies = [
+ "fastrand",
+ "phf_shared 0.14.0",
 ]
 
 [[package]]
@@ -1343,6 +1378,15 @@ name = "phf_shared"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e57fef6bc5981e38c2ce2d63bfa546861309f875b8a75f092d1d54ae2d64f266"
+dependencies = [
+ "siphasher",
+]
+
+[[package]]
+name = "phf_shared"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6fd9027e2d9319be6349febd1db4e8d02aa544921200c9b777720ac34a3aa89"
 dependencies = [
  "siphasher",
 ]
@@ -1657,11 +1701,11 @@ dependencies = [
  "ruff_diagnostics",
  "ruff_memory_usage",
  "ruff_notebook",
- "ruff_python_ast",
- "ruff_python_parser",
- "ruff_python_trivia",
- "ruff_source_file",
- "ruff_text_size",
+ "ruff_python_ast 0.0.17",
+ "ruff_python_parser 0.0.17",
+ "ruff_python_trivia 0.0.17",
+ "ruff_source_file 0.0.17",
+ "ruff_text_size 0.0.17",
  "rustc-hash",
  "salsa",
  "serde",
@@ -1683,7 +1727,7 @@ checksum = "cdaa2e4689c8edf9009437cc2064b62adca2602eed74409077d2fe99b2f08248"
 dependencies = [
  "get-size2",
  "is-macro",
- "ruff_text_size",
+ "ruff_text_size 0.0.17",
  "serde",
 ]
 
@@ -1696,7 +1740,7 @@ dependencies = [
  "drop_bomb",
  "ruff_cache",
  "ruff_macros",
- "ruff_text_size",
+ "ruff_text_size 0.0.17",
  "rustc-hash",
  "schemars",
  "serde",
@@ -1717,8 +1761,8 @@ dependencies = [
  "ruff_db",
  "ruff_linter",
  "ruff_macros",
- "ruff_python_ast",
- "ruff_python_parser",
+ "ruff_python_ast 0.0.17",
+ "ruff_python_parser 0.0.17",
  "salsa",
  "schemars",
  "serde",
@@ -1768,20 +1812,20 @@ dependencies = [
  "ruff_diagnostics",
  "ruff_macros",
  "ruff_notebook",
- "ruff_python_ast",
+ "ruff_python_ast 0.0.17",
  "ruff_python_codegen",
  "ruff_python_edits",
  "ruff_python_importer",
  "ruff_python_index",
  "ruff_python_literal",
- "ruff_python_parser",
+ "ruff_python_parser 0.0.17",
  "ruff_python_semantic",
  "ruff_python_stdlib",
- "ruff_python_trivia",
+ "ruff_python_trivia 0.0.17",
  "ruff_ranged_value",
- "ruff_source_file",
- "ruff_text_size",
- "ruff_unicode_names2",
+ "ruff_source_file 0.0.17",
+ "ruff_text_size 0.0.17",
+ "ruff_unicode_names2 0.0.17",
  "rustc-hash",
  "schemars",
  "serde",
@@ -1809,7 +1853,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "regex",
- "ruff_python_trivia",
+ "ruff_python_trivia 0.0.17",
  "syn 3.0.9",
 ]
 
@@ -1831,8 +1875,8 @@ dependencies = [
  "anyhow",
  "rand 0.10.3",
  "ruff_diagnostics",
- "ruff_source_file",
- "ruff_text_size",
+ "ruff_source_file 0.0.17",
+ "ruff_text_size 0.0.17",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
@@ -1861,9 +1905,9 @@ dependencies = [
  "memchr",
  "ruff_cache",
  "ruff_macros",
- "ruff_python_trivia",
- "ruff_source_file",
- "ruff_text_size",
+ "ruff_python_trivia 0.0.17",
+ "ruff_source_file 0.0.17",
+ "ruff_text_size 0.0.17",
  "rustc-hash",
  "salsa",
  "schemars",
@@ -1874,16 +1918,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "ruff_python_ast"
+version = "0.0.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df8f77693e5f11e7d574c84a8dd63190142ae683749f5ef019bafeffb952fd19"
+dependencies = [
+ "aho-corasick",
+ "arrayvec",
+ "bitflags 2.13.2",
+ "char_str",
+ "compact_str",
+ "get-size2",
+ "is-macro",
+ "memchr",
+ "ruff_python_trivia 0.0.21",
+ "ruff_source_file 0.0.21",
+ "ruff_text_size 0.0.21",
+ "rustc-hash",
+ "thin-vec",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "ruff_python_codegen"
 version = "0.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "551ba7330f737f6d485dfc66014ddcf32ab7ccc609876d704b9801702c116952"
 dependencies = [
- "ruff_python_ast",
+ "ruff_python_ast 0.0.17",
  "ruff_python_literal",
- "ruff_python_parser",
- "ruff_source_file",
- "ruff_text_size",
+ "ruff_python_parser 0.0.17",
+ "ruff_source_file 0.0.17",
+ "ruff_text_size 0.0.17",
 ]
 
 [[package]]
@@ -1892,9 +1958,9 @@ version = "0.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b655ceeeb3a98c7e7440229605f808354ace5e971fefeb99b5dca0f5393fab2"
 dependencies = [
- "ruff_python_ast",
- "ruff_source_file",
- "ruff_text_size",
+ "ruff_python_ast 0.0.17",
+ "ruff_source_file 0.0.17",
+ "ruff_text_size 0.0.17",
 ]
 
 [[package]]
@@ -1913,11 +1979,11 @@ dependencies = [
  "ruff_db",
  "ruff_formatter",
  "ruff_macros",
- "ruff_python_ast",
- "ruff_python_parser",
- "ruff_python_trivia",
- "ruff_source_file",
- "ruff_text_size",
+ "ruff_python_ast 0.0.17",
+ "ruff_python_parser 0.0.17",
+ "ruff_python_trivia 0.0.17",
+ "ruff_source_file 0.0.17",
+ "ruff_text_size 0.0.17",
  "rustc-hash",
  "salsa",
  "schemars",
@@ -1937,11 +2003,11 @@ checksum = "aa24906f50be70c1dcb7b32bcdda9988940399d6bce60204e5bec6fa42b4e69c"
 dependencies = [
  "anyhow",
  "ruff_diagnostics",
- "ruff_python_ast",
+ "ruff_python_ast 0.0.17",
  "ruff_python_codegen",
- "ruff_python_trivia",
- "ruff_source_file",
- "ruff_text_size",
+ "ruff_python_trivia 0.0.17",
+ "ruff_source_file 0.0.17",
+ "ruff_text_size 0.0.17",
 ]
 
 [[package]]
@@ -1950,10 +2016,10 @@ version = "0.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f07aff0fa9205c391ac57de594d8da99f8e249f3599bbd632fb62a3964bd289"
 dependencies = [
- "ruff_python_ast",
- "ruff_python_trivia",
- "ruff_source_file",
- "ruff_text_size",
+ "ruff_python_ast 0.0.17",
+ "ruff_python_trivia 0.0.17",
+ "ruff_source_file 0.0.17",
+ "ruff_text_size 0.0.17",
 ]
 
 [[package]]
@@ -1966,7 +2032,7 @@ dependencies = [
  "icu_normalizer",
  "icu_properties",
  "itertools 0.15.0",
- "ruff_python_ast",
+ "ruff_python_ast 0.0.17",
 ]
 
 [[package]]
@@ -1981,12 +2047,35 @@ dependencies = [
  "get-size2",
  "hashbrown 0.17.1",
  "memchr",
- "ruff_python_ast",
- "ruff_python_trivia",
- "ruff_text_size",
- "ruff_unicode_names2",
+ "ruff_python_ast 0.0.17",
+ "ruff_python_trivia 0.0.17",
+ "ruff_text_size 0.0.17",
+ "ruff_unicode_names2 0.0.17",
  "rustc-hash",
  "stacker",
+ "static_assertions",
+ "thin-vec",
+ "unicode-ident",
+ "unicode-normalization",
+]
+
+[[package]]
+name = "ruff_python_parser"
+version = "0.0.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c567873f6a0e094d3f72b37862a8420a6eb4b3fc2950b4975e5a61b46aab3acc"
+dependencies = [
+ "bitflags 2.13.2",
+ "bstr",
+ "drop_bomb",
+ "get-size2",
+ "hashbrown 0.17.1",
+ "memchr",
+ "ruff_python_ast 0.0.21",
+ "ruff_python_trivia 0.0.21",
+ "ruff_text_size 0.0.21",
+ "ruff_unicode_names2 0.0.21",
+ "rustc-hash",
  "static_assertions",
  "thin-vec",
  "unicode-ident",
@@ -2004,10 +2093,10 @@ dependencies = [
  "ruff_cache",
  "ruff_index",
  "ruff_macros",
- "ruff_python_ast",
- "ruff_python_parser",
+ "ruff_python_ast 0.0.17",
+ "ruff_python_parser 0.0.17",
  "ruff_python_stdlib",
- "ruff_text_size",
+ "ruff_text_size 0.0.17",
  "rustc-hash",
  "schemars",
  "serde",
@@ -2032,8 +2121,23 @@ checksum = "0322a5059fe0feb2e010ca6f31c24ac289f6b7e9e38359539491b10c57f1c5bc"
 dependencies = [
  "itertools 0.15.0",
  "memchr",
- "ruff_source_file",
- "ruff_text_size",
+ "ruff_source_file 0.0.17",
+ "ruff_text_size 0.0.17",
+ "rustc-hash",
+ "unicode-ident",
+ "unicode-normalization",
+]
+
+[[package]]
+name = "ruff_python_trivia"
+version = "0.0.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "78209bfee4543e650edffee040849c5ca828a05d60c7d3b8b53bb63d2dd49a70"
+dependencies = [
+ "itertools 0.15.0",
+ "memchr",
+ "ruff_source_file 0.0.21",
+ "ruff_text_size 0.0.21",
  "rustc-hash",
  "unicode-ident",
  "unicode-normalization",
@@ -2046,8 +2150,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df8e427a63bfac5b02277c1620b97fa85e2f41ce8d383c64b987602f8727050a"
 dependencies = [
  "ruff_db",
- "ruff_python_ast",
- "ruff_text_size",
+ "ruff_python_ast 0.0.17",
+ "ruff_text_size 0.0.17",
  "serde",
  "toml 1.1.8+spec-1.1.0",
 ]
@@ -2060,8 +2164,18 @@ checksum = "d6ae809a289b5c791f82aa45df33f2a92323e7a1c1d265c10e9ac884027a2e43"
 dependencies = [
  "get-size2",
  "memchr",
- "ruff_text_size",
+ "ruff_text_size 0.0.17",
  "serde",
+]
+
+[[package]]
+name = "ruff_source_file"
+version = "0.0.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b2159c6129bf08ecde949e8aca0edc5411fbcbaaecdbd401fd75385f5a74e95"
+dependencies = [
+ "memchr",
+ "ruff_text_size 0.0.21",
 ]
 
 [[package]]
@@ -2076,13 +2190,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "ruff_text_size"
+version = "0.0.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb9ffcbeaefe5f3a7bef2c80dbf591a0fa1f9ec22c5ce7bf4f4c2397104e6496"
+dependencies = [
+ "get-size2",
+]
+
+[[package]]
 name = "ruff_unicode_names2"
 version = "0.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13418b8fd029d597e35dedc36e91f47122d26075e4c86557574d9441753fb375"
 dependencies = [
  "phf 0.11.3",
- "ruff_unicode_names2_generator",
+ "ruff_unicode_names2_generator 0.0.17",
+]
+
+[[package]]
+name = "ruff_unicode_names2"
+version = "0.0.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7bc534053fd582ce4b3431d94f6e9f398bb214eb9baf497b06b5c8d6446f379d"
+dependencies = [
+ "phf 0.14.0",
+ "ruff_unicode_names2_generator 0.0.21",
 ]
 
 [[package]]
@@ -2091,8 +2224,18 @@ version = "0.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37fd82af49d5685d9054e68185987acaaf62542f671b6df8935155664876bc39"
 dependencies = [
- "phf_codegen",
+ "phf_codegen 0.11.3",
  "rand 0.8.8",
+]
+
+[[package]]
+name = "ruff_unicode_names2_generator"
+version = "0.0.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3b540b2b312bde02dbfd5261013e06dda9d3ecd33cb6e62f962b019903ae56c"
+dependencies = [
+ "phf_codegen 0.14.0",
+ "rand 0.10.3",
 ]
 
 [[package]]
@@ -2123,12 +2266,12 @@ dependencies = [
  "ruff_linter",
  "ruff_macros",
  "ruff_options_metadata",
- "ruff_python_ast",
+ "ruff_python_ast 0.0.17",
  "ruff_python_formatter",
  "ruff_python_semantic",
  "ruff_python_stdlib",
  "ruff_ranged_value",
- "ruff_source_file",
+ "ruff_source_file 0.0.17",
  "rustc-hash",
  "schemars",
  "serde",
@@ -2654,7 +2797,7 @@ dependencies = [
  "regex-syntax",
  "ruff_db",
  "ruff_memory_usage",
- "ruff_python_ast",
+ "ruff_python_ast 0.0.17",
  "ruff_python_stdlib",
  "rustc-hash",
  "salsa",
@@ -2676,10 +2819,10 @@ dependencies = [
  "indexmap",
  "ruff_annotate_snippets",
  "ruff_db",
- "ruff_python_ast",
- "ruff_python_trivia",
- "ruff_source_file",
- "ruff_text_size",
+ "ruff_python_ast 0.0.17",
+ "ruff_python_trivia 0.0.17",
+ "ruff_source_file 0.0.17",
+ "ruff_text_size 0.0.17",
  "strum",
  "strum_macros",
  "tracing",
