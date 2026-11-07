@@ -24,7 +24,7 @@ export findings identify the exact exported string range. Hosts use a valid `s`
 conversion in percent-conversion masks, so synthetic unsupported-conversion findings
 do not require inspecting upstream message text.
 
-The Ruff adapter is reviewed against Ruff 0.17.0. Changing the linked engine version
+The Ruff adapter is reviewed against Ruff 0.17.4. Changing the linked engine version
 requires reviewing the effect mapping and range fixtures; an unreviewed engine is
 rejected. The Python default belongs to the engine and its generated schema. Hosts
 forward an explicit target only when configured or inferred from an interpreter.

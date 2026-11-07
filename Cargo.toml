@@ -24,7 +24,7 @@ name = "ruff-plugin"
 path = "src/main.rs"
 
 [dependencies]
-ruff_linter = { version = "0.17.0" }
+ruff_linter = { version = "0.17.4" }
 
 ruff_db             = { version = "0.0.21" }
 ruff_python_ast     = { version = "0.0.21" }
