@@ -1,7 +1,7 @@
 import { deepStrictEqual as equal } from 'node:assert/strict';
 import { readMetadata } from '../scripts/metadata.ts';
-import { Ruff } from '../scripts/wasm.ts';
 import type { CheckResponse, CheckSuccess } from '../scripts/wasm.ts';
+import { Ruff } from '../scripts/wasm.ts';
 
 const wasm = await Deno.readFile(Deno.args[0] ?? new URL('../artifacts/plugin.wasm', import.meta.url));
 const module = await WebAssembly.compile(wasm);

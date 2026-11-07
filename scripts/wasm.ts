@@ -1,5 +1,5 @@
-import { requireInterface } from './contract.ts';
 import type { Metadata } from './contract.ts';
+import { requireInterface } from './contract.ts';
 export type { Metadata } from './contract.ts';
 
 interface Exports {
