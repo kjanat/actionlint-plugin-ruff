@@ -185,7 +185,8 @@ Successful checks return:
 
 Rows and columns are one-based Unicode character offsets. End positions are exclusive. CRLF is preserved. `code`
 prefers Ruff's short rule code and falls back to the diagnostic name, including `invalid-syntax`. `severity` preserves
-Ruff's `info`, `warning`, `error`, or `fatal` value. `url` can be null. Diagnostics sort by row, column, and code.
+Ruff's `info`, `warning`, `error`, or `fatal` value and reports Ruff's `hint` as `info`. `url` can be null. Diagnostics
+sort by row, column, and code.
 There are no fix edits. Field names and coordinates match actionlint's existing Ruff diagnostic decoder.
 
 `validate_config` accepts the Ruff options object itself, not a snippet or a `config` envelope:

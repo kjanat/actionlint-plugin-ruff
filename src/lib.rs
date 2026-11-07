@@ -20,7 +20,7 @@ pub const DEFAULT_TARGET_VERSION: &str = "py314";
 
 pub use engine::Diagnostic;
 pub use engine::Position;
-pub use ruff_db::diagnostic::Severity;
+pub use engine::Severity;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
