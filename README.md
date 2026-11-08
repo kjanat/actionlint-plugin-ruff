@@ -3,18 +3,18 @@
 A Rust wrapper around Ruff for Python snippets in actionlint. New integrations use the typed
 `kjanat:actionlint/script-engine@0.2.0` WebAssembly component. The core JSON transport exports
 `check`, `validate_config`, and `metadata`.
-Both transports share the same Rust analysis and option-validation implementation.
+Both transports use the same Rust code for analysis and option validation.
 
 Ruff owns option deserialization, rule selection, Python targets, parsing, and diagnostics. There are no handwritten
 rule catalogs or checked-in Ruff schemas. `Cargo.toml` uses Ruff's published crates.io packages: `ruff_linter` 0.17.4
 and companion crates 0.0.21. `Cargo.lock` records the resolved versions and package checksums.
 
-The actionlint host tests check the actual packaged artifacts. The core module also runs through independent
-Go, Rust, and TypeScript hosts. The component uses the vendored
+The actionlint host tests check the packaged artifacts. Independent Go, Rust, and TypeScript hosts also test the core
+module. The component uses the vendored
 [WIT interface](vendor/actionlint-extension-api/wit/script-engine.wit).
 Changing the host language does not require rebuilding either portable artifact.
 CI runs both packaged transports through actionlint on Linux, macOS, and Windows using the same artifact bytes,
-including cold loading with the host's default limits.
+including a first load with the host's default limits.
 
 The vendored SDK comes from actionlint commit `99a250b29aaadfdb2d95a0c6ab954d3f9f11bdc8`. The Go host
 tests use the actionlint revision in `tests/component/go.mod`. The
@@ -53,7 +53,7 @@ The packaged module starts with an `actionlint.plugin` custom section containing
 including project links, language/shell matching, conflict declarations, versioned interfaces, and the full config
 schema. Consumers can read this section without compiling or instantiating the engine. A
 prefix ending after the first section is sufficient, which allows metadata retrieval through HTTP Range requests when
-the server supports them. The standalone `metadata.json` can also be served directly over HTTP.
+the server supports them. A server can also provide `metadata.json` over HTTP.
 
 Inspect the default `artifacts/plugin.wasm` without a WASM runtime, or supply another raw or gzip asset:
 
@@ -66,7 +66,7 @@ deno task inspect --help
 See the [interface compatibility rules](docs/plugin-contract.md#interface-compatibility-and-evolution) for future LSP,
 formatting, and fix support.
 
-The exported `readMetadata` helper in `scripts/metadata.ts` reads section bytes directly. The builder obtains metadata
+The `readMetadata` helper in `scripts/metadata.ts` reads the section bytes. The builder obtains metadata
 from Ruff once, embeds it after optimization, then generates gzip and checksums from the resulting module. Repackaging
 replaces the section instead of adding duplicate copies.
 
@@ -88,11 +88,10 @@ The Deno runtime tests instantiate the actual artifact with an empty import obje
 errors, and reuse one instance for hundreds of calls. Both the raw Cargo module and the optimized artifact must remain
 import-free.
 
-The complete engine includes all Ruff rules regardless of which rules a request enables. A gzip asset reduces the bytes
-added
-to the host executable. It does not reduce the size of the compiled engine in memory. The Go host can decompress the
-asset
-with `compress/gzip` once before compiling it with wazero. The Go integration test verifies that the gzip asset restores
+The engine includes all Ruff rules regardless of which rules a request enables. A gzip asset reduces the bytes
+added to the host executable. It does not reduce the size of the compiled engine in memory. The Go host can decompress
+the asset once with `compress/gzip` before compiling it with wazero. The Go integration test verifies that the gzip
+asset restores
 the exact raw module, then exercises that module without host imports. The independent Rust host test loads the same
 raw artifact with Wasmi and checks the same v1 signatures and wire behavior. Wasmi is only a test-host dependency. The
 plugin and its consumers do not need that runtime. Schema generation remains in the same engine.
@@ -125,9 +124,8 @@ modern `lint` table and legacy top-level lint options. `enabled` is an actionlin
 host.
 
 Checks ignore line and file `noqa` suppressions, report Unicode character columns, and never apply fixes. The filename
-is
-virtual and the engine never opens it. It controls `.pyi` behavior, per-file target versions, and per-file ignores.
-Import sorting uses explicitly configured known modules instead of discovering first-party imports from disk.
+is virtual, and the engine never opens it. It controls `.pyi` behavior, per-file target versions, and per-file ignores.
+Import sorting uses configured known modules instead of discovering first-party imports from disk.
 
 Options that load or discover configuration, expand environment-dependent paths, or request CLI side effects are
 rejected: `extend`, `cache-dir`, `src`, `namespace-packages`, `fix`, `fix-only`, `unsafe-fixes`, `show-fixes`, and
@@ -156,18 +154,17 @@ copied into every artifact bundle.
 
 ## Current actionlint integration
 
-Build with `deno task build`, then select the artifact directly:
+Build with `deno task build`, then select the artifact:
 
 ```sh
 actionlint check --plugin /path/to/artifacts/plugin.component.wasm
 ```
 
 The host recognizes the typed script-engine role and selects this engine as its Ruff backend.
-The core JSON transport loads `plugin.wasm`.
-Workflow expression masking, script selection, YAML
-source mapping, severity and suppressions are host responsibilities. No Python
-or native Ruff executable is needed for this backend. `tools.ruff` supplies engine
-configuration. An explicitly selected competing backend is an error.
+The core JSON transport loads `plugin.wasm`. The host handles workflow expression masking, script selection, YAML source
+mapping, severity, and suppressions. This backend needs no Python or native Ruff executable. `tools.ruff` supplies
+engine
+configuration. Selecting a competing backend is an error.
 
 Metadata now includes the shared rule descriptor (category, subcategory, maturity,
 provider, help, documentation and the Ruff-generated options
@@ -187,8 +184,8 @@ project, runs
 The Release workflow runs that CI against the tag. The registry's publish action then uploads the
 exact tested component, core module, gzip variants, metadata, schema, and licenses. `SHA256SUMS`
 binds every package file. The action submits `plugin.component.wasm`, waits for `published`, and
-runs the same fixture against the public catalogue. The publication and installation receipts
-are retained as workflow artifacts.
+runs the same fixture against the public catalogue. The workflow retains the publication and installation receipts as
+artifacts.
 
 Rerun the Release workflow on the same tag after a recoverable failure. No workflow
 creates tags or silently upgrades an existing release. Core artifacts use the version-1 JSON ABI.

@@ -9,8 +9,7 @@ Ruff owns Python analysis and configuration validation. The plugin receives one 
 The optional `kjanat:actionlint/template-effects@0.2.0` component interface returns each
 diagnostic together with a typed effect describing how expression substitution affects
 its validity. Its `contract()` returns the semantic identifier `kjanat:actionlint/template-effects@0.1.0`. The original
-script-engine
-interface remains available. Core JSON `check` operation version 2 adds `template_effect`
+script-engine interface remains available. Core JSON `check` operation version 2 adds `template_effect`
 and requires the matching `template_contract` discovery field. Operation version 1 and
 the physical memory ABI version 1 remain supported.
 Its self-contained request and diagnostic types use the same sanitized-source and Unicode
@@ -18,8 +17,8 @@ coordinate semantics as script-engine. The two interfaces can evolve independent
 
 Effects identify line length, complete references, generated names or parentheses,
 string contents, docstring summary, exported names, and percent-conversion slots.
-`none` explicitly preserves a finding. Hosts filter using the effect and recorded
-substitution ranges, never diagnostic codes or human-readable messages. In particular,
+`none` preserves a finding. Hosts filter findings using the effect and recorded substitution ranges. They do not use
+diagnostic codes or human-readable messages. In particular,
 export findings identify the exact exported string range. Hosts use a valid `s`
 conversion in percent-conversion masks, so synthetic unsupported-conversion findings
 do not require inspecting upstream message text.
@@ -57,11 +56,12 @@ an arbitrary provider identity and changed diagnostic presentation. They never r
 The integration modules pin actionlint commit `8836017f3c5150fcd6eba7b4ae64658b2d5c53e1`, the same revision
 as the vendored SDK. Guest builds never depend on a sibling checkout.
 
-The following core ABI remains supported independently for existing consumers.
+The following core ABI remains available to existing consumers.
 
 ## Core module ABI, version 1
 
-The packaged module is `artifacts/plugin.wasm`, targeting `wasm32-unknown-unknown`. It requires no host imports or WASI.
+The packaged module is `artifacts/plugin.wasm`. It targets `wasm32-unknown-unknown`. It requires no host imports or
+WASI.
 Requests and responses are UTF-8 JSON bytes in linear memory.
 
 For embedding in any host executable, use the reproducible `artifacts/plugin.wasm.gz` asset and decompress it once
@@ -106,8 +106,8 @@ Inputs are borrowed during a call, not consumed. Passing an unknown pointer or a
 returns a structured error without dereferencing arbitrary host-provided addresses.
 
 One instance supports many calls. Serialize calls within an instance. Use separate instances for parallel checks.
-Configuration is resolved anew per check and never leaks between calls. Initialization of Ruff's inventory constructors
-happens once inside the plugin. The host needs no initialization export.
+The plugin resolves configuration for each check, so it never leaks between calls. The plugin initializes Ruff's
+inventory constructors once. The host needs no initialization export.
 
 The host supplies memory and execution limits and terminates/discards an instance on cancellation or a WASM trap.
 Panics abort/trap instead of becoming JSON errors. The 8 MiB limit applies to request bytes, not total guest memory or
@@ -122,8 +122,8 @@ Go to Rust changes the host adapter, not the plugin ID, operation versions, or a
 
 The boundary contains WASM integers, guest-owned linear-memory buffers, and UTF-8 JSON. Guest pointers are offsets into
 guest memory, never pointers into Go or Rust host memory. No Go struct layout, Rust trait object, enum layout,
-allocator,
-compiler version, or runtime-specific compiled-module format is part of the contract. Hosts copy results into their own
+allocator, compiler version, or runtime-specific compiled-module format is part of the contract. Hosts copy results into
+their own
 memory and release guest allocations with the guest's `dealloc`. They must parse response objects with support for
 unknown optional fields. Rust consumers must not apply `serde(deny_unknown_fields)` to extensible response or discovery
 objects. Requests retain the stricter versioned rules described below.
@@ -270,9 +270,9 @@ selection hints, not a reason to reject a sanitized Python snippet with a virtua
 
 `conflicts` lists plugin IDs that cannot be active together. An empty list declares no explicit cross-plugin conflict.
 Identical plugin IDs are alternate versions of the same plugin. An operation's `exclusive_group` declares
-interchangeable
-providers: the host chooses one provider in that group for that operation on a matching snippet, preventing duplicate
-Ruff diagnostics. Overlapping language support alone does not constitute a conflict. Operation groups are independent,
+interchangeable providers. The host chooses one provider in that group for the operation on a matching snippet, which
+prevents duplicate Ruff diagnostics. Overlapping language support alone does not constitute a conflict. Operation groups
+are independent,
 so a future formatter can coexist with a checker. The host controls selection and overrides. Metadata never disables
 another plugin by itself.
 
@@ -286,7 +286,7 @@ Compatibility has three independent versions:
 | `abi_version`                      | Core memory layout, allocation ownership, calling convention, and host-import requirements. |
 | `interfaces.<operation>[].version` | That operation's JSON request, response, coordinates, and semantics.                        |
 
-Version numbers are exact positive integers, not minimum host versions. Hosts explicitly select an understood operation
+Version numbers are exact positive integers, not minimum host versions. Hosts select an understood operation
 version and its advertised `export`. An absent operation or unsupported version disables that optional feature. A
 missing required operation prevents activation. Unknown optional fields and operation names must be ignored. The
 provided `resolveInterface` and `requireInterface` helpers implement these rules without a runtime. The development
@@ -296,8 +296,7 @@ host checks the operation versions before checking a snippet. Legacy artifacts w
 Keep every advertised v1 contract usable. Add optional response/discovery fields with existing fields and meanings
 preserved. Existing `check` requests reject unknown fields, so a host cannot send new request fields merely because a
 plugin is newer. A new request shape, changed required field, coordinate unit, error meaning, or result shape needs a
-new
-operation version and a separate export, for example `check_v2`. Advertise both versions while retaining v1 for old
+new operation version and a separate export, for example `check_v2`. Advertise both versions while retaining v1 for old
 hosts. Memory/ownership or calling-convention changes need a new ABI version. Incompatible discovery changes need a new
 metadata version. Plugin release versions do not substitute for these contract versions. Ruff rule/default changes
 remain engine behavior and are governed by the engine release and user configuration, not the memory ABI.
@@ -307,30 +306,27 @@ For example, a later plugin could add `format: [{ "version": 1, "export": "forma
 `capabilities.format` and `capabilities.fixes` are false. Adding them requires specified and tested contracts first.
 Changing a boolean is insufficient. A future fix contract must distinguish safe and unsafe fixes and define edit
 coordinates, non-overlap, and the exact source revision to which edits apply. Producing edits does not authorize
-applying
-them: the CLI or LSP host owns automatic application, unsafe-fix opt-in, and mapping back to workflow YAML.
+applying them. The CLI or LSP host handles automatic application, unsafe-fix opt-in,
+and mapping back to workflow YAML.
 
 An actionlint LSP can reuse the check interface for diagnostics and later negotiate format/fix interfaces for formatting
 and code actions. The host translates one-based Unicode positions to its negotiated LSP position encoding, maps snippet
 edits to YAML, and rejects edits spanning sanitized expressions or stale document versions. The engine does not
-advertise
-an LSP transport. LSP methods and document lifetime belong to the host. Formatting, fix generation, and automatic edit
+advertise an LSP transport. LSP methods and document lifetime belong to the host. Formatting, fix generation, and
+automatic edit
 application remain separate capabilities.
 
 The frozen `tests/fixtures/abi-v1.json` signatures are checked against the actual compiled module by the Go and Rust
 host integration tests. Existing Rust, TypeScript, and Go probes retain the v1 requests, error shapes, buffer ownership,
-and Unicode
-coordinates. Metadata tests cover legacy discovery, coexistence of operation versions, unsupported required versions,
+and Unicode coordinates. Metadata tests cover legacy discovery, coexistence of operation versions, unsupported required
+versions,
 unknown optional extensions, unsupported transports, and ambiguous descriptors. Run these checks against rebuilt
-artifacts before accepting any
-interface change. Extending the fixture to excuse a v1 break is not a compatible update.
+artifacts before accepting any interface change. Extending the fixture to excuse a v1 break is not a compatible update.
 
 The `Contract checks` workflow runs these checks on pull requests and pushes to `master`. It builds and packages the
 engine before exercising static discovery, operation negotiation, runtime behavior, CLI handling, and both Go and Rust
-hosts,
-then checks formatting, Rust/TypeScript linting, and Go cleanup errors with `errcheck`. Generated artifacts remain build
-outputs rather than committed
-catalogs.
+hosts, then checks formatting, Rust/TypeScript linting, and Go cleanup errors with `errcheck`. Generated artifacts
+remain build outputs rather than committed catalogs.
 
 ### Static metadata without instantiation
 
@@ -344,9 +340,8 @@ It does not need to read, compile, validate, or execute the code section. The pr
 headers, overflowing/truncated lengths, malformed metadata, and metadata payloads above 1 MiB.
 
 This layout supports reading a file prefix or an HTTP Range response containing the complete first section. For network
-discovery, the identical `metadata.json` sidecar can be fetched directly. Gzip assets must be decompressed before
-section
-inspection. Reading metadata does not validate the executable module. Normal module validation happens when the host
+discovery, a host can fetch the identical `metadata.json` sidecar. Decompress gzip assets before inspecting
+the section. Reading metadata does not validate the executable module. Normal module validation happens when the host
 loads it for checking Python.
 
 The packaging step adds or replaces this section after WASM optimization, then regenerates the gzip asset and checksums.
@@ -361,8 +356,8 @@ and its
 ## Host responsibilities
 
 A Go or Rust host can compile the embedded module once and pool instances. It forwards sanitized Python and opaque Ruff
-options,
-unwraps the response, then applies expression-span filtering and actionlint's YAML source mapping. The plugin does not
+options, unwraps the response, then applies expression-span filtering and actionlint's YAML source mapping. The plugin
+does not
 interpret `${{ }}`, workflow YAML, shell strings, or actionlint suppressions. The host supplies virtual filenames and
 interpreter-derived targets. Package discovery is disabled, so checks requiring package roots lack repository context.
 
