@@ -63,6 +63,29 @@ jobs:
       - name: Record tested package digest
         id: package
         run: python3 -B scripts/release.py verify
+      - name: Build the installer host
+        shell: bash
+        run: go -C tests/component build -mod=readonly
+          -o "${RUNNER_TEMP}/actionlint" actionlint.kjanat.dev/v2/cmd/actionlint
+      - name: Install the candidate and verify offline checking
+        uses: kjanat/actionlint-registry/check@0f7acf59423b65864cca8a85b9b67e4fbdfe1403 # master
+        with:
+          actionlint: ${{ runner.temp }}/actionlint
+          fixture: tests/installation.ts
+          artifact: artifacts/plugin.component.wasm
+          report: candidate.json
+      - name: Preserve installation evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: candidate-verification
+          path: candidate.json
+          if-no-files-found: error
+      - name: Preserve the tested host
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tested-actionlint
+          path: ${{ runner.temp }}/actionlint
+          if-no-files-found: error
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: actionlint-plugin-ruff

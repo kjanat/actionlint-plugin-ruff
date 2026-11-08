@@ -178,17 +178,16 @@ The core JSON ABI uses version 1. Actionlint supplies workflow semantics.
 
 Push a signed `vX.Y.Z` tag after setting both package versions (`Cargo.toml` and
 `crates/component/Cargo.toml`) to `X.Y.Z` and refreshing `Cargo.lock`. Enable GitHub release immutability first.
-The Release workflow runs the full contract CI against that tag, then uploads the
-exact tested component, core module, gzip variants, metadata, schema, and
-licenses. `SHA256SUMS` binds every package file. Existing differing assets are
-never replaced; an identical incomplete draft can resume.
+CI builds the actionlint host pinned in `tests/component/go.mod` and runs the registry's
+[candidate check](https://github.com/kjanat/actionlint-registry/blob/master/docs/publishing.md) on
+`plugin.component.wasm`. The check installs the candidate into a fresh project, runs
+[`tests/installation.ts`](tests/installation.ts), and repeats it with network access blocked.
 
-Only `plugin.component.wasm` is submitted to the registry. The workflow waits for
-`published`, then uses the host revision pinned in `tests/component/go.mod` to
-install the exact version into a fresh project, check its digest and identity,
-produce the expected F821 finding, and repeat checking with network proxies blocked.
-The publication and installation receipts are retained as workflow artifacts.
-A GitHub release or a pending registry submission does not confirm publication.
+The Release workflow runs that CI against the tag. The registry's publish action then uploads the
+exact tested component, core module, gzip variants, metadata, schema, and licenses. `SHA256SUMS`
+binds every package file. The action submits `plugin.component.wasm`, waits for `published`, and
+runs the same fixture against the public catalogue. The publication and installation receipts
+are retained as workflow artifacts.
 
 Rerun the Release workflow on the same tag after a recoverable failure. No workflow
 creates tags or silently upgrades an existing release. Core artifacts use the version-1 JSON ABI.
