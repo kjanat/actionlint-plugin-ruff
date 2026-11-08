@@ -231,7 +231,7 @@ pub fn metadata() -> Value {
     object.remove("interfaces");
     value["transport"] = json!("wasm-component");
     value["interface"] = json!("kjanat:actionlint/script-engine@0.2.0");
-    value["contract_sha256"] = json!(hex_lower(&Sha256::digest(
+    value["wit_sha256"] = json!(hex_lower(&Sha256::digest(
         include_str!("../../../vendor/actionlint-extension-api/wit/script-engine.wit")
             .replace("\r\n", "\n")
             .as_bytes()

@@ -160,7 +160,7 @@ function decodeComponentMetadata(metadata: Uint8Array): Record<string, unknown> 
 		!object(value)
 		|| value.transport !== 'wasm-component'
 		|| value.interface !== 'kjanat:actionlint/script-engine@0.2.0'
-		|| typeof value.contract_sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(value.contract_sha256)
+		|| typeof value.wit_sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(value.wit_sha256)
 		|| typeof value.id !== 'string' || value.id.length === 0
 		|| typeof value.plugin_version !== 'string' || value.plugin_version.length === 0
 	) throw new Error('invalid script-engine component metadata');

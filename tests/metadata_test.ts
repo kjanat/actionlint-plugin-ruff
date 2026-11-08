@@ -26,7 +26,7 @@ Deno.test('component metadata keeps its typed interface separate from the core A
 		plugin_version: '0.1.0',
 		transport: 'wasm-component',
 		interface: 'kjanat:actionlint/script-engine@0.2.0',
-		contract_sha256: 'a'.repeat(64),
+		wit_sha256: 'a'.repeat(64),
 	};
 	const packaged = withComponentMetadata(component, encode(metadata));
 	equal(readDiscoveryMetadata(packaged), metadata);
@@ -35,7 +35,7 @@ Deno.test('component metadata keeps its typed interface separate from the core A
 	throws(() => readMetadata(packaged), /core WASM/);
 	throws(() => withComponentMetadata(header, encode(metadata)), /component header/);
 	throws(
-		() => withComponentMetadata(component, encode({ ...metadata, contract_sha256: 'wrong' })),
+		() => withComponentMetadata(component, encode({ ...metadata, wit_sha256: 'wrong' })),
 		/component metadata/,
 	);
 	throws(() => withComponentMetadata(component, encode(fixture)), /component metadata/);
