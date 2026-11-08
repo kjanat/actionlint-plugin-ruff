@@ -16,8 +16,8 @@ changing host language does not require rebuilding either portable artifact.
 CI runs both packaged transports through actionlint on Linux, macOS, and Windows using the same artifact bytes,
 including cold loading with the host's default limits.
 
-The vendored SDK and Go host tests select actionlint commit
-`99a250b29aaadfdb2d95a0c6ab954d3f9f11bdc8`. The
+The vendored SDK comes from actionlint commit `99a250b29aaadfdb2d95a0c6ab954d3f9f11bdc8`. The Go host
+tests use the actionlint revision in `tests/component/go.mod`. The
 [snapshot manifest](vendor/actionlint-extension-api.snapshot.json) records the source blobs and hashes without local
 patches. The unpublished Go test modules use the actionlint module prefix to access its private host packages.
 Distributed plugins use the Wasm contracts. Builds need no sibling actionlint checkout or module replacement.
@@ -25,8 +25,8 @@ Update the snapshot as a unit; never edit its WIT independently.
 
 ## Build and verify
 
-Requirements: Rust 1.98 with the `wasm32-unknown-unknown` target (configured in
-`rust-toolchain.toml`), Go 1.27.2,
+Requirements: Rust 1.99.1 with the `wasm32-unknown-unknown` target (configured in
+`rust-toolchain.toml`), Go 1.27.3,
 Deno 2, and Binaryen's `wasm-opt` version 133. `mise install` provides Go, Deno, Binaryen, and the documentation tools.
 
 ```sh
