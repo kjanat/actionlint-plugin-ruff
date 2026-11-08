@@ -6,7 +6,7 @@ toolchain go1.27.3
 
 require (
 	actionlint.kjanat.dev/v2 v2.0.0-20261108044617-1f405551cd5e
-	github.com/kjanat/wazero v1.11.1
+	github.com/kjanat/wazero v1.12.0
 )
 
 require (
