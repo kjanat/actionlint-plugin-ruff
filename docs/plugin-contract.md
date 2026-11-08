@@ -24,7 +24,7 @@ export findings identify the exact exported string range. Hosts use a valid `s`
 conversion in percent-conversion masks, so synthetic unsupported-conversion findings
 do not require inspecting upstream message text.
 
-The Ruff adapter is reviewed against Ruff 0.17.0. Changing the linked engine version
+The Ruff adapter is reviewed against Ruff 0.17.4. Changing the linked engine version
 requires reviewing the effect mapping and range fixtures; an unreviewed engine is
 rejected. The Python default belongs to the engine and its generated schema. Hosts
 forward an explicit target only when configured or inferred from an interpreter.
@@ -185,7 +185,8 @@ Successful checks return:
 
 Rows and columns are one-based Unicode character offsets. End positions are exclusive. CRLF is preserved. `code`
 prefers Ruff's short rule code and falls back to the diagnostic name, including `invalid-syntax`. `severity` preserves
-Ruff's `info`, `warning`, `error`, or `fatal` value. `url` can be null. Diagnostics sort by row, column, and code.
+Ruff's `info`, `warning`, `error`, or `fatal` value and reports Ruff's `hint` as `info`. `url` can be null. Diagnostics
+sort by row, column, and code.
 There are no fix edits. Field names and coordinates match actionlint's existing Ruff diagnostic decoder.
 
 `validate_config` accepts the Ruff options object itself, not a snippet or a `config` envelope:

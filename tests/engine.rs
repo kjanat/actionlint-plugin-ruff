@@ -1,3 +1,4 @@
+use actionlint_plugin_ruff::Severity;
 use actionlint_plugin_ruff::check;
 use actionlint_plugin_ruff::metadata;
 use actionlint_plugin_ruff::validate_config;
@@ -269,4 +270,24 @@ fn calls_do_not_share_configuration_or_suppressions() {
             ["F821"]
         );
     }
+}
+
+#[test]
+fn severities_use_the_contract_values() {
+    for (ruff, expected) in [
+        (ruff_db::diagnostic::Severity::Hint, "info"),
+        (ruff_db::diagnostic::Severity::Info, "info"),
+        (ruff_db::diagnostic::Severity::Warning, "warning"),
+        (ruff_db::diagnostic::Severity::Error, "error"),
+        (ruff_db::diagnostic::Severity::Fatal, "fatal"),
+    ] {
+        assert_eq!(
+            serde_json::to_value(Severity::from(ruff)).unwrap(),
+            json!(expected)
+        );
+    }
+    assert_eq!(
+        lint("print(missing)\n", json!({}))["diagnostics"][0]["severity"],
+        "error"
+    );
 }

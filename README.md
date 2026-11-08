@@ -6,8 +6,8 @@ A Rust wrapper around Ruff for Python snippets in actionlint. New integrations u
 Both transports share the same Rust analysis and option-validation implementation.
 
 Ruff owns option deserialization, rule selection, Python targets, parsing, and diagnostics. There are no handwritten
-rule catalogs or checked-in Ruff schemas. `Cargo.toml` uses Ruff's published crates.io packages: `ruff_linter` 0.17.0
-and companion crates 0.0.17. `Cargo.lock` records the resolved versions and package checksums.
+rule catalogs or checked-in Ruff schemas. `Cargo.toml` uses Ruff's published crates.io packages: `ruff_linter` 0.17.4
+and companion crates 0.0.21. `Cargo.lock` records the resolved versions and package checksums.
 
 The actionlint host tests check the actual packaged artifacts. The core module also runs through independent
 Go, Rust, and TypeScript hosts. The component uses the vendored
