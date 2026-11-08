@@ -3,6 +3,7 @@
 	"extends": [
 		"config:recommended"
 	],
+	"ignorePaths": ["**/node_modules/**", "**/vendor/**"],
 	"packageRules": [
 		{
 			"matchDatasources": ["crate"],
