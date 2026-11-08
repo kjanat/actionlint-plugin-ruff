@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0] - 2026-11-08
+
+### Changed
+
+- **Breaking:** component metadata declares the WIT checksum as `wit_sha256`. The registry rejects new releases that declare `contract_sha256`.
+- Update Ruff to `ruff_linter` 0.17.4.
+- Build bindings from the public SDK vendored from actionlint `99a250b29aaa`. Metadata omits rule-wide fix availability.
+
 ## [0.2.0] - 2026-10-29
 
 ### Changed
@@ -15,5 +23,6 @@
 
 *First release.*
 
+[0.3.0]: https://github.com/kjanat/actionlint-plugin-ruff/releases/tag/v0.3.0
 [0.2.0]: https://github.com/kjanat/actionlint-plugin-ruff/releases/tag/v0.2.0
 [0.1.0]: https://github.com/kjanat/actionlint-plugin-ruff/releases/tag/v0.1.0
