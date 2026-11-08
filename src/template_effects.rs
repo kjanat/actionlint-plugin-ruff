@@ -1,4 +1,4 @@
-//! Versioned semantic adapter. Do not classify diagnostics using message text.
+//! Classify expression effects without depending on diagnostic messages.
 use serde::Serialize;
 
 pub const CONTRACT: &str = "kjanat:actionlint/template-effects@0.1.0";

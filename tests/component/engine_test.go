@@ -177,8 +177,8 @@ func checkWorkflow(t *testing.T, ctx context.Context, backend checkinputs.Script
 	}
 }
 
-// Runtime negotiation validates the plugin contract. Changing package identity
-// or display text must not change template handling or source mapping.
+// A different provider identity and diagnostic text must not change expression
+// handling or source mapping after contract negotiation.
 type presentationIndependentBackend struct{ *componenthost.Plugin }
 
 func (b presentationIndependentBackend) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {

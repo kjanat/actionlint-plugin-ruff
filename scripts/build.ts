@@ -16,8 +16,8 @@ try {
 		temporary,
 		'-o',
 		'artifacts/plugin.wasm',
-		// Restrict optimization to core features supported by Go hosts.
-		// --all-features permits Binaryen to introduce typed references and GC.
+		// Limit optimization to core features that Go hosts support.
+		// Binaryen may add typed references and GC with --all-features.
 		'--mvp-features',
 		'--enable-bulk-memory',
 		'--enable-multivalue',
@@ -33,7 +33,7 @@ try {
 } finally {
 	await Deno.remove(temporary);
 }
-// Derive metadata and compressed bytes from the final, import-free module.
+// Read metadata and create the gzip asset from the optimized module.
 await packageWasm('artifacts/plugin.wasm');
 await run('cargo', [
 	'build',

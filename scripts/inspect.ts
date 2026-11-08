@@ -7,7 +7,7 @@ import { readDiscoveryMetadata } from './metadata.ts';
 const defaultPath = fileURLToPath(new URL('../artifacts/plugin.wasm', import.meta.url));
 
 export const inspectCommand = command('inspect')
-	.description('Read embedded plugin metadata and schema without a WASM runtime')
+	.description('Inspect a plugin file for its embedded metadata and schema')
 	.arg(
 		'file',
 		arg.path({ mustExist: true, type: 'file' })
@@ -28,12 +28,12 @@ export const inspectCommand = command('inspect')
 	});
 
 export const inspectCli = cli('inspect')
-	.description('Read embedded plugin metadata and schema without a WASM runtime')
+	.description('Inspect a plugin file for its embedded metadata and schema')
 	.default(inspectCommand);
 
 if (import.meta.main) {
-	// DreamCLI 4.1.0's default adapter reads the entire environment and does not
-	// catch Deno's NotCapable error. Restrict it to terminal presentation settings.
+	// DreamCLI 4.1.0 reads the whole environment and does not catch Deno's
+	// NotCapable error. Limit it to the terminal presentation variables.
 	const terminalVariables = ['FORCE_COLOR', 'NO_COLOR', 'CI', 'TERM', 'NO_HYPERLINKS', 'FORCE_HYPERLINKS'];
 	const terminalEnvironment: Record<string, string> = {};
 	for (const name of terminalVariables) {

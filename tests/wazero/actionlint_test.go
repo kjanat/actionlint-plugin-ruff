@@ -21,8 +21,8 @@ import (
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 
-// The standalone wazero test exercises the frozen wire ABI independently.
-// This test exercises actionlint's private loader and workflow checking pipeline.
+// The standalone wazero test checks the frozen ABI. This test uses actionlint's
+// private loader and checks a workflow through actionlint.
 func TestPackagedEngineThroughActionlint(t *testing.T) {
 	directory := filepath.Dir(*wasmPath)
 	metadata, err := os.ReadFile(filepath.Join(directory, "metadata.json"))

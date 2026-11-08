@@ -1,4 +1,4 @@
-"""Check the release tag and the exact packaged file set."""
+"""Validate the release tag, package files, and checksums."""
 
 import hashlib
 import os

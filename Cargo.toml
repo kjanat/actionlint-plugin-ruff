@@ -3,7 +3,7 @@ name          = "actionlint-plugin-ruff"
 version       = "0.3.0"
 edition       = "2024"
 rust-version  = "1.97"
-description   = "Hermetic Ruff engine for actionlint, with a core WebAssembly JSON ABI"
+description   = "Run Ruff on actionlint Python snippets through WebAssembly"
 documentation = "https://github.com/kjanat/actionlint-plugin-ruff/blob/master/docs/plugin-contract.md"
 homepage      = "https://github.com/kjanat/actionlint-plugin-ruff"
 repository    = "https://github.com/kjanat/actionlint-plugin-ruff"
@@ -44,8 +44,8 @@ default  = ["core-abi"]
 core-abi = []
 
 [patch.crates-io]
-# Ruff's browser clock pulls in JS bindings even though linting never uses it.
-# The core module has no clock imports. Unexpected clock access traps on wasm32.
+# Replace Ruff's browser clock dependency so the guest needs no JavaScript imports.
+# An unexpected clock call traps on wasm32.
 web-time = { path = "crates/web-time" }
 
 [profile.dev]

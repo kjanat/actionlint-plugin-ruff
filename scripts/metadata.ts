@@ -104,7 +104,7 @@ function decodeMetadata(bytes: Uint8Array): Metadata {
 	return value as unknown as Metadata;
 }
 
-/** Read only section bytes. A prefix ending after the metadata section is sufficient. */
+/** Read metadata from a file prefix that includes the whole metadata section. */
 export function readMetadataBytes(wasm: Uint8Array): Uint8Array {
 	if (!componentHeader.every((value, i) => wasm[i] === value)) checkHeader(wasm);
 	let offset = header.length;
@@ -125,13 +125,13 @@ export function readMetadataBytes(wasm: Uint8Array): Uint8Array {
 	throw new Error(`missing ${METADATA_SECTION} custom section`);
 }
 
-/** Inspect metadata without compiling, instantiating, or executing guest code. */
+/** Read core metadata without loading the WebAssembly module. */
 export function readMetadata(wasm: Uint8Array): Metadata {
 	checkHeader(wasm);
 	return decodeMetadata(readMetadataBytes(wasm));
 }
 
-/** Inspect either supported artifact without imposing core ABI fields on components. */
+/** Read metadata from either a core module or a component. */
 export function readDiscoveryMetadata(wasm: Uint8Array): Metadata | Record<string, unknown> {
 	if (componentHeader.every((value, i) => wasm[i] === value)) {
 		return decodeComponentMetadata(readMetadataBytes(wasm));
@@ -139,14 +139,14 @@ export function readDiscoveryMetadata(wasm: Uint8Array): Metadata | Record<strin
 	return readMetadata(wasm);
 }
 
-/** Put one metadata section first, replacing any earlier copy while preserving other sections. */
+/** Replace any metadata section and place it before the other sections. */
 export function withMetadata(wasm: Uint8Array, metadata: Uint8Array): Uint8Array {
 	checkHeader(wasm);
 	decodeMetadata(metadata);
 	return withMetadataSection(wasm, metadata);
 }
 
-/** Add typed script-engine discovery metadata to the outer component only. */
+/** Add script-engine discovery metadata to the outer component. */
 export function withComponentMetadata(wasm: Uint8Array, metadata: Uint8Array): Uint8Array {
 	if (!componentHeader.every((value, i) => wasm[i] === value)) throw new Error('expected a WASM component header');
 	decodeComponentMetadata(metadata);

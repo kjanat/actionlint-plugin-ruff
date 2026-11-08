@@ -1,4 +1,4 @@
-//! Typed Component Model transport over the same hermetic Ruff analysis engine.
+//! Expose the Ruff analysis engine through a typed WebAssembly component.
 
 use actionlint_plugin_ruff as engine;
 use serde_json::Value;
@@ -223,7 +223,7 @@ fn hex_lower(bytes: &[u8]) -> String {
     out
 }
 
-/// Discovery metadata records the packaged component's WIT source provenance.
+/// Record the WIT source used to build the packaged component.
 pub fn metadata() -> Value {
     let mut value = engine::metadata();
     let object = value.as_object_mut().expect("engine metadata is an object");
