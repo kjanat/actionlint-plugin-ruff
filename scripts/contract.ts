@@ -35,7 +35,7 @@ export interface Metadata {
 		max_input_bytes?: number;
 	};
 	config_schema: { additionalProperties: boolean; properties: Record<string, unknown> };
-	// Optional only for artifacts made before versioned discovery was introduced.
+	// Artifacts built before versioned discovery omit this field.
 	metadata_version?: number;
 	transport?: string;
 	id?: string;
@@ -60,7 +60,7 @@ const legacyExports: Readonly<Record<string, string>> = {
 	metadata: 'metadata',
 };
 
-/** Select only an explicitly understood contract; unknown optional interfaces are ignored. */
+/** Select a supported contract and ignore unknown optional interfaces. */
 export function resolveInterface(metadata: Metadata, name: string, version: number): string | undefined {
 	if (metadata.abi_version !== 1) throw new Error(`unsupported ABI version: ${metadata.abi_version}`);
 	if ((metadata.metadata_version ?? 1) !== 1) {

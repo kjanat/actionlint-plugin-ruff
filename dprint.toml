@@ -1,7 +1,7 @@
 #:schema ./dprint.schema.json
 
 extends  = ["https://raw.githubusercontent.com/kjanat/kjanat/refs/heads/master/configs/dprint.remote.json"]
-# The vendored SDK must match its upstream snapshot byte for byte.
+# Keep the SDK files identical to the upstream snapshot.
 excludes = ["vendor/**"]
 
 [markdown]

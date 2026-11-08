@@ -135,7 +135,7 @@ func TestCoreModuleInGo(t *testing.T) {
 	}
 }
 
-// Keep this fixture frozen: new operations may add exports, but v1 must stay callable.
+// Keep the v1 signatures unchanged when adding exports.
 func verifyV1Exports(t *testing.T, compiled wazero.CompiledModule) {
 	t.Helper()
 	data, err := os.ReadFile("../fixtures/abi-v1.json")

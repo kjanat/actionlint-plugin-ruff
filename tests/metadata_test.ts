@@ -80,7 +80,7 @@ Deno.test('interface negotiation preserves v1 alongside newer and unknown capabi
 	equal(requireInterface(metadata, 'check', 1), 'check');
 	equal(resolveInterface(metadata, 'format', 1), undefined);
 	throws(() => requireInterface(metadata, 'format', 1), /unsupported interface/);
-	// Removing v1 is detected even when the operation itself remains available.
+	// Reject removal of v1 even if another version of the operation remains.
 	throws(
 		() => requireInterface({ ...metadata, interfaces: { check: [{ version: 2, export: 'check_v2' }] } }, 'check', 1),
 		/unsupported interface/,
@@ -117,12 +117,12 @@ Deno.test('malformed discovery fields and ambiguous interface versions are rejec
 });
 
 Deno.test('metadata is readable from a prefix without executable code', () => {
-	// This prefix deliberately ends before any types or functions: metadata needs no runtime.
+	// End the prefix before types and functions to check metadata-only discovery.
 	const prefix = withMetadata(header, encode(fixture));
 	equal(prefix[8], 0);
 	equal(readMetadata(prefix), fixture);
 	equal(readMetadataBytes(prefix), encode(fixture));
-	// Code is never validated or touched by metadata inspection.
+	// Metadata inspection does not read or validate the code section.
 	const invalidTail = new Uint8Array([...prefix, 10, 1, 255]);
 	equal(readMetadata(invalidTail), fixture);
 });

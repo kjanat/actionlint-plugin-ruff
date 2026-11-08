@@ -1,7 +1,7 @@
 import { gzipSync } from 'node:zlib';
 import { withComponentMetadata } from './metadata.ts';
 
-/** Package the typed component separately, preserving the legacy core artifacts. */
+/** Package the component without replacing the core module artifacts. */
 export async function packageComponent(): Promise<void> {
 	const command = new Deno.Command('cargo', {
 		args: ['run', '--locked', '--package', 'actionlint-plugin-ruff-component', '--bin', 'component-metadata'],
