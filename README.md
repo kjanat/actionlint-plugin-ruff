@@ -178,9 +178,10 @@ The core JSON ABI uses version 1. Actionlint supplies workflow semantics.
 
 Push a signed `vX.Y.Z` tag after setting both package versions (`Cargo.toml` and
 `crates/component/Cargo.toml`) to `X.Y.Z` and refreshing `Cargo.lock`. Enable GitHub release immutability first.
-CI builds the actionlint host pinned in `tests/component/go.mod` and runs the registry's
+CI runs the registry's
 [candidate check](https://github.com/kjanat/actionlint-registry/blob/master/docs/publishing.md) on
-`plugin.component.wasm`. The check installs the candidate into a fresh project, runs
+`plugin.component.wasm` with the registry's pinned actionlint host. The check installs the candidate into a fresh
+project, runs
 [`tests/installation.ts`](tests/installation.ts), and repeats it with network access blocked.
 
 The Release workflow runs that CI against the tag. The registry's publish action then uploads the
