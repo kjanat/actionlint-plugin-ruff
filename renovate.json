@@ -4,11 +4,17 @@
 		"config:recommended"
 	],
 	"ignorePaths": ["**/node_modules/**", "**/vendor/**"],
+	"postUpdateOptions": ["gomodTidy"],
 	"packageRules": [
 		{
 			"matchDatasources": ["crate"],
 			"matchPackageNames": ["/^ruff_/"],
 			"groupName": "ruff crates"
+		},
+		{
+			"description": "The wazero fork carries upstream tags with the upstream module path; the actionlint host requirement selects its version.",
+			"matchPackageNames": ["github.com/kjanat/wazero"],
+			"enabled": false
 		}
 	]
 }
