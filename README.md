@@ -11,8 +11,8 @@ and companion crates 0.0.21. `Cargo.lock` records the resolved versions and pack
 
 The actionlint host tests check the actual packaged artifacts. The core module also runs through independent
 Go, Rust, and TypeScript hosts. The component uses the vendored
-[WIT interface](vendor/actionlint-extension-api/wit/script-engine.wit);
-changing host language does not require rebuilding either portable artifact.
+[WIT interface](vendor/actionlint-extension-api/wit/script-engine.wit).
+Changing the host language does not require rebuilding either portable artifact.
 CI runs both packaged transports through actionlint on Linux, macOS, and Windows using the same artifact bytes,
 including cold loading with the host's default limits.
 
@@ -21,7 +21,7 @@ tests use the actionlint revision in `tests/component/go.mod`. The
 [snapshot manifest](vendor/actionlint-extension-api.snapshot.json) records the source blobs and hashes without local
 patches. The unpublished Go test modules use the actionlint module prefix to access its private host packages.
 Distributed plugins use the Wasm contracts. Builds need no sibling actionlint checkout or module replacement.
-Update the snapshot as a unit; never edit its WIT independently.
+Update the snapshot as a unit. Never edit its WIT independently.
 
 ## Build and verify
 
@@ -90,18 +90,18 @@ import-free.
 
 The complete engine includes all Ruff rules regardless of which rules a request enables. A gzip asset reduces the bytes
 added
-to the host executable; it does not reduce the size of the compiled engine in memory. The Go host can decompress the
+to the host executable. It does not reduce the size of the compiled engine in memory. The Go host can decompress the
 asset
 with `compress/gzip` once before compiling it with wazero. The Go integration test verifies that the gzip asset restores
 the exact raw module, then exercises that module without host imports. The independent Rust host test loads the same
-raw artifact with Wasmi and checks the same v1 signatures and wire behavior. Wasmi is only a test-host dependency; the
-plugin and its consumers are not required to use that runtime. Schema generation remains in the same engine.
+raw artifact with Wasmi and checks the same v1 signatures and wire behavior. Wasmi is only a test-host dependency. The
+plugin and its consumers do not need that runtime. Schema generation remains in the same engine.
 
 Ruff's database crate normally pulls in `web-time` and JavaScript clock bindings on wasm32. The local facade
 re-exports `std::time`: both transports remain import-free and unexpected clock access traps.
 Neither transport receives filesystem, environment, clock, or network services.
 The component uses `wasm32-unknown-unknown` because Ruff's current `typed-path` dependency requires an
-unstable Rust feature on `wasm32-wasip2`; component encoding itself works on stable Rust.
+unstable Rust feature on `wasm32-wasip2`. Component encoding itself works on stable Rust.
 
 ## Configuration and diagnostics
 
@@ -118,7 +118,7 @@ Pass an ordinary Ruff options object, including nested `lint` options:
 }
 ```
 
-Omitting `select` uses the linked Ruff engine's own defaults; an explicit empty list selects no lint rules. All Ruff
+Omitting `select` uses the linked Ruff engine's own defaults. An explicit empty list selects no lint rules. All Ruff
 rule groups remain configurable. Syntax errors are still reported.
 The Python target defaults to `py314`. The host can override it based on the selected interpreter. Ruff accepts both its
 modern `lint` table and legacy top-level lint options. `enabled` is an actionlint setting and must be handled by the
@@ -126,14 +126,14 @@ host.
 
 Checks ignore line and file `noqa` suppressions, report Unicode character columns, and never apply fixes. The filename
 is
-virtual and is not opened; it controls `.pyi` behavior, per-file target versions, and per-file ignores. Import sorting
-uses explicitly configured known modules instead of discovering first-party imports from disk.
+virtual and the engine never opens it. It controls `.pyi` behavior, per-file target versions, and per-file ignores.
+Import sorting uses explicitly configured known modules instead of discovering first-party imports from disk.
 
 Options that load or discover configuration, expand environment-dependent paths, or request CLI side effects are
 rejected: `extend`, `cache-dir`, `src`, `namespace-packages`, `fix`, `fix-only`, `unsafe-fixes`, `show-fixes`, and
 `output-file`. File discovery and output-format options are accepted by Ruff but do not alter this single-snippet JSON
 API.
-The generated schema describes supported options; semantic validation runs through Ruff, not JSON Schema alone.
+The generated schema describes supported options. Ruff runs semantic validation on top of it.
 
 For native development, the same implementation is available as a small JSON utility:
 
@@ -148,7 +148,7 @@ cargo run --locked -- schema
 
 Change the shared Ruff revision on every Ruff dependency in `Cargo.toml`, update `Cargo.lock`, and run the checks above.
 The version string comes from `ruff_linter::VERSION` and the schema from `ruff_workspace::options::Options` in the same
-build. Publishable assets can be taken from `artifacts/`; no selector table or schema snapshot needs a separate update.
+build. Take publishable assets from `artifacts/`. No selector table or schema snapshot needs a separate update.
 Ruff's internal Rust APIs may require wrapper changes when updating the pinned revision.
 
 This project is MIT licensed. Ruff's MIT license and upstream attribution notices are included in `LICENSE-RUFF` and

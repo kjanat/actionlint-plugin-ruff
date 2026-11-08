@@ -60,7 +60,7 @@ const legacyExports: Readonly<Record<string, string>> = {
 	metadata: 'metadata',
 };
 
-/** Select only an explicitly understood contract; unknown optional interfaces are ignored. */
+/** Select only an explicitly understood contract and ignore unknown optional interfaces. */
 export function resolveInterface(metadata: Metadata, name: string, version: number): string | undefined {
 	if (metadata.abi_version !== 1) throw new Error(`unsupported ABI version: ${metadata.abi_version}`);
 	if ((metadata.metadata_version ?? 1) !== 1) {

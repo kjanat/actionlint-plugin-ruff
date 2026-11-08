@@ -1,4 +1,4 @@
-//! Ruff owns Python analysis and option validation; actionlint owns script selection and YAML mapping.
+//! Ruff owns Python analysis and option validation. Actionlint owns script selection and YAML mapping.
 
 mod engine;
 pub mod template_effects;

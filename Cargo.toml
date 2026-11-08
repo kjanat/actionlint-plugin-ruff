@@ -45,7 +45,7 @@ core-abi = []
 
 [patch.crates-io]
 # Ruff's browser clock pulls in JS bindings even though linting never uses it.
-# The core module has no clock imports; unexpected clock access traps on wasm32.
+# The core module has no clock imports. Unexpected clock access traps on wasm32.
 web-time = { path = "crates/web-time" }
 
 [profile.dev]

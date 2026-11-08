@@ -12,7 +12,7 @@ export const inspectCommand = command('inspect')
 		'file',
 		arg.path({ mustExist: true, type: 'file' })
 			.default(defaultPath)
-			.describe('Raw or gzip WASM asset (defaults to artifacts/plugin.wasm; build with deno task build)'),
+			.describe('Raw or gzip WASM asset. Run deno task build to create the default.'),
 	)
 	.action(async ({ args, out }) => {
 		try {

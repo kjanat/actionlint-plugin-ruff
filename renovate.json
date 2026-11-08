@@ -17,7 +17,7 @@
 			"groupName": "actionlint integration"
 		},
 		{
-			"description": "The wazero fork carries upstream tags with the upstream module path; the actionlint host requirement selects its version.",
+			"description": "The wazero fork carries upstream tags with the upstream module path. The actionlint host requirement selects its version.",
 			"matchPackageNames": ["github.com/kjanat/wazero"],
 			"enabled": false
 		}

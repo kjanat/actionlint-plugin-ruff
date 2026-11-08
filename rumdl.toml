@@ -10,7 +10,7 @@
 # List of rules to disable (uncomment and modify as needed)
 # disable = ["MD013", "MD033"]
 
-# List of rules to enable exclusively (replaces defaults; only these rules will run)
+# Rules to enable exclusively. This list replaces the defaults, so only these rules run.
 # enable = ["MD001", "MD003", "MD004"]
 
 # Additional rules to enable on top of defaults (additive, does not replace)
