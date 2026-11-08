@@ -15,7 +15,7 @@ pub const METADATA_VERSION: u32 = 1;
 pub const MAX_INPUT_BYTES: usize = 8 * 1024 * 1024;
 pub const PLUGIN_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const ENGINE_VERSION: &str = ruff_linter::VERSION;
-/// Default shared by runtime options and the published schema.
+/// The default used by runtime options and the published schema.
 pub const DEFAULT_TARGET_VERSION: &str = "py314";
 
 pub use engine::Diagnostic;
@@ -55,7 +55,7 @@ pub fn check(input: &[u8]) -> Value {
     }
 }
 
-/// Validate a Ruff options object with exactly the same path used by `check`.
+/// Validate a Ruff options object using the same code as `check`.
 pub fn validate_config(input: &[u8]) -> Value {
     match decode::<Value>(input).and_then(validate_options) {
         Ok(_) => json!({"ok": true, "errors": []}),
@@ -63,7 +63,7 @@ pub fn validate_config(input: &[u8]) -> Value {
     }
 }
 
-/// Analyze a typed request, shared by the core JSON and Component Model adapters.
+/// Analyze a typed request for the core JSON and Component Model adapters.
 pub fn check_request(request: CheckRequest) -> Result<Vec<Diagnostic>, String> {
     engine::check(request)
 }
@@ -73,7 +73,7 @@ pub fn validate_options(config: Value) -> Result<(), String> {
     engine::settings(config).map(|_| ())
 }
 
-/// Shared rule metadata. Transport adapters only encode this descriptor.
+/// Rule metadata encoded by each transport adapter.
 #[derive(Serialize)]
 pub struct RuleDescriptor {
     pub name: String,

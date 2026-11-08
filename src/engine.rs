@@ -25,7 +25,7 @@ use serde_json::json;
 use crate::CheckRequest;
 
 // These options discover files, expand environment variables, or imply CLI side effects.
-// This is an adapter boundary, not a copy of Ruff's rule or Python-version catalog.
+// The adapter does not copy Ruff's rule or Python-version catalog.
 pub(crate) const UNSUPPORTED_OPTIONS: &[&str] = &[
     "extend",
     "cache-dir",
@@ -61,7 +61,7 @@ pub(crate) fn settings(mut config: Value) -> Result<Settings, String> {
     let _guard = ValueSourceGuard::new(ValueSource::Cli, false);
     let options: Options =
         serde_json::from_value(config).map_err(|e| format!("invalid Ruff config: {e}"))?;
-    // An absolute virtual root prevents cwd or filesystem discovery during settings resolution.
+    // An absolute virtual root prevents working-directory or filesystem discovery during settings resolution.
     let root = Path::new("/");
     let mut configuration = Configuration::from_options(options, None, root)
         .map_err(|e| format!("invalid Ruff config: {e}"))?;

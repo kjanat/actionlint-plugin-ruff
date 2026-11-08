@@ -5,8 +5,9 @@ A Rust wrapper around Ruff for Python snippets in actionlint. New integrations u
 `check`, `validate_config`, and `metadata`.
 Both transports use the same Rust code for analysis and option validation.
 
-Ruff owns option deserialization, rule selection, Python targets, parsing, and diagnostics. There are no handwritten
-rule catalogs or checked-in Ruff schemas. `Cargo.toml` uses Ruff's published crates.io packages: `ruff_linter` 0.17.4
+Ruff deserializes options, selects rules and Python targets, parses code, and reports diagnostics. The project does not
+maintain a separate rule catalog or Ruff schema. `Cargo.toml` uses Ruff's published crates.io packages: `ruff_linter`
+0.17.4
 and companion crates 0.0.21. `Cargo.lock` records the resolved versions and package checksums.
 
 The actionlint host tests check the packaged artifacts. Independent Go, Rust, and TypeScript hosts also test the core
@@ -16,12 +17,12 @@ Changing the host language does not require rebuilding either portable artifact.
 CI runs both packaged transports through actionlint on Linux, macOS, and Windows using the same artifact bytes,
 including a first load with the host's default limits.
 
-The vendored SDK comes from actionlint commit `99a250b29aaadfdb2d95a0c6ab954d3f9f11bdc8`. The Go host
+The copied SDK comes from actionlint commit `99a250b29aaadfdb2d95a0c6ab954d3f9f11bdc8`. The Go host
 tests use the actionlint revision in `tests/component/go.mod`. The
 [snapshot manifest](vendor/actionlint-extension-api.snapshot.json) records the source blobs and hashes without local
 patches. The unpublished Go test modules use the actionlint module prefix to access its private host packages.
 Distributed plugins use the Wasm contracts. Builds need no sibling actionlint checkout or module replacement.
-Update the snapshot as a unit. Never edit its WIT independently.
+Update the whole snapshot together. Do not edit its WIT separately.
 
 ## Build and verify
 
@@ -46,14 +47,14 @@ verifies that module has no imports, and extracts its schema through `metadata()
 the same Rust target, with only its typed WIT exports enabled. A Cargo-locked `wit-component` encoder
 produces the component, packaged separately with its exact WIT digest.
 
-Production builds fail if dependency resolution would change `Cargo.lock`. Update dependencies deliberately,
-review the lockfile, then repeat the locked build and verification.
+Production builds fail if dependency resolution would change `Cargo.lock`. When updating dependencies, review the
+lockfile, then repeat the locked build and verification.
 
-The packaged module starts with an `actionlint.plugin` custom section containing the exact bytes of `metadata.json`,
-including project links, language/shell matching, conflict declarations, versioned interfaces, and the full config
-schema. Consumers can read this section without compiling or instantiating the engine. A
-prefix ending after the first section is sufficient, which allows metadata retrieval through HTTP Range requests when
-the server supports them. A server can also provide `metadata.json` over HTTP.
+The packaged module starts with an `actionlint.plugin` custom section containing the exact bytes of `metadata.json`.
+It includes project links, language and shell matching, conflicts, versioned interfaces, and the full config schema.
+Consumers can read the section without compiling or instantiating the engine. They only need the file through the end
+of the first section, so they can use an HTTP Range request when the server supports it. A server can also provide
+`metadata.json` over HTTP.
 
 Inspect the default `artifacts/plugin.wasm` without a WASM runtime, or supply another raw or gzip asset:
 
@@ -84,8 +85,8 @@ Outputs are local build artifacts under `artifacts/`:
 | `SHA256SUMS`               | Checksums for the module, metadata, schema, and licenses |
 | `LICENSE`, `LICENSE-RUFF`  | MIT and Ruff's bundled attribution notices               |
 
-The Deno runtime tests instantiate the actual artifact with an empty import object, check diagnostics and configuration
-errors, and reuse one instance for hundreds of calls. Both the raw Cargo module and the optimized artifact must remain
+The Deno runtime tests instantiate the artifact with an empty import object. They check diagnostics and configuration
+errors and reuse one instance for hundreds of calls. Both the raw Cargo module and the optimized artifact must remain
 import-free.
 
 The engine includes all Ruff rules regardless of which rules a request enables. A gzip asset reduces the bytes
@@ -127,11 +128,11 @@ Checks ignore line and file `noqa` suppressions, report Unicode character column
 is virtual, and the engine never opens it. It controls `.pyi` behavior, per-file target versions, and per-file ignores.
 Import sorting uses configured known modules instead of discovering first-party imports from disk.
 
-Options that load or discover configuration, expand environment-dependent paths, or request CLI side effects are
-rejected: `extend`, `cache-dir`, `src`, `namespace-packages`, `fix`, `fix-only`, `unsafe-fixes`, `show-fixes`, and
+The engine rejects options that load or discover configuration, expand environment-dependent paths, or request CLI
+side effects: `extend`, `cache-dir`, `src`, `namespace-packages`, `fix`, `fix-only`, `unsafe-fixes`, `show-fixes`, and
 `output-file`. File discovery and output-format options are accepted by Ruff but do not alter this single-snippet JSON
 API.
-The generated schema describes supported options. Ruff runs semantic validation on top of it.
+The generated schema describes supported options. Ruff also checks their meaning.
 
 For native development, the same implementation is available as a small JSON utility:
 
@@ -147,7 +148,7 @@ cargo run --locked -- schema
 Change the shared Ruff revision on every Ruff dependency in `Cargo.toml`, update `Cargo.lock`, and run the checks above.
 The version string comes from `ruff_linter::VERSION` and the schema from `ruff_workspace::options::Options` in the same
 build. Take publishable assets from `artifacts/`. No selector table or schema snapshot needs a separate update.
-Ruff's internal Rust APIs may require wrapper changes when updating the pinned revision.
+Updating Ruff may require changes to the wrapper because Ruff's internal Rust APIs can change.
 
 This project is MIT licensed. Ruff's MIT license and upstream attribution notices are included in `LICENSE-RUFF` and
 copied into every artifact bundle.
@@ -166,9 +167,8 @@ mapping, severity, and suppressions. This backend needs no Python or native Ruff
 engine
 configuration. Selecting a competing backend is an error.
 
-Metadata now includes the shared rule descriptor (category, subcategory, maturity,
-provider, help, documentation and the Ruff-generated options
-schema). The typed component exports only the script-engine role, not a workflow analyzer.
+Metadata includes the rule descriptor: category, subcategory, maturity, provider, help, documentation, and the
+Ruff-generated options schema. The typed component exports only the script-engine role, not a workflow analyzer.
 The core JSON ABI uses version 1. Actionlint supplies workflow semantics.
 
 ## Publication
