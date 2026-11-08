@@ -44,7 +44,7 @@ jobs:
         run: chmod +x "${RUNNER_TEMP}/actionlint"
       - name: Publish the tested candidate and verify delivery
         id: publish
-        uses: kjanat/actionlint-registry/publish@0f7acf59423b65864cca8a85b9b67e4fbdfe1403 # master
+        uses: kjanat/actionlint-registry/publish@master
         with:
           asset: plugin.component.wasm
           sha256: ${{ needs.build.outputs.sha256 }}

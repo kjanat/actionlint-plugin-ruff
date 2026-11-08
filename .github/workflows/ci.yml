@@ -68,7 +68,7 @@ jobs:
         run: go -C tests/component build -mod=readonly
           -o "${RUNNER_TEMP}/actionlint" actionlint.kjanat.dev/v2/cmd/actionlint
       - name: Install the candidate and verify offline checking
-        uses: kjanat/actionlint-registry/check@0f7acf59423b65864cca8a85b9b67e4fbdfe1403 # master
+        uses: kjanat/actionlint-registry/check@master
         with:
           actionlint: ${{ runner.temp }}/actionlint
           fixture: tests/installation.ts
