@@ -2,7 +2,9 @@ module actionlint.kjanat.dev/v2/plugins/ruff/tests/component
 
 go 1.27.2
 
-require actionlint.kjanat.dev/v2 v2.0.0-20261105171632-99a250b29aaa
+toolchain go1.27.3
+
+require actionlint.kjanat.dev/v2 v2.0.0-20261108044617-1f405551cd5e
 
 require (
 	github.com/bmatcuk/doublestar/v4 v4.10.3 // indirect
@@ -26,6 +28,7 @@ require (
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
+	github.com/tidwall/jsonc v0.3.3 // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect

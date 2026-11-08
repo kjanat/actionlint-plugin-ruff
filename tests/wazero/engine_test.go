@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/api"
+	"github.com/kjanat/wazero"
+	"github.com/kjanat/wazero/api"
 )
 
 var wasmPath = flag.String("wasm", "../../artifacts/plugin.wasm.gz", "WASM artifact to verify (raw or gzip)")
