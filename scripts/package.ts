@@ -10,7 +10,7 @@ export async function packageWasm(path: string | URL): Promise<void> {
 	const wasm = withMetadata(input, new TextEncoder().encode(metadataJSON));
 	await Deno.mkdir('artifacts', { recursive: true });
 	await Deno.writeFile('artifacts/plugin.wasm', wasm);
-	// Node's gzip encoder uses a zero timestamp, making the asset reproducible.
+	// Node writes a zero gzip timestamp so repeated builds produce the same bytes.
 	const compressed = gzipSync(wasm, { level: 9 });
 	await Deno.writeFile('artifacts/plugin.wasm.gz', compressed);
 	await Deno.writeTextFile('artifacts/metadata.json', metadataJSON);

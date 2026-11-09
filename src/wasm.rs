@@ -1,4 +1,4 @@
-//! Owned allocation handles avoid trusting raw pointers supplied by the host.
+//! Track guest allocations before accepting pointers from the host.
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::sync::Once;
@@ -13,7 +13,7 @@ fn initialize() {
         unsafe extern "C" {
             fn __wasm_call_ctors();
         }
-        // SAFETY: call linked inventory constructors exactly once before Ruff is used.
+        // SAFETY: Run the linked inventory constructors once before calling Ruff.
         unsafe {
             __wasm_call_ctors();
         }

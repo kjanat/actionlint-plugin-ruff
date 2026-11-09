@@ -1,4 +1,4 @@
-//! Typed Component Model transport over the same hermetic Ruff analysis engine.
+//! Expose the Ruff analysis engine through a typed WebAssembly component.
 
 use actionlint_extension_api::script_engine::v0_2::exports::kjanat::actionlint0_2_0::script_engine as api;
 use actionlint_extension_api::script_engine::v0_2::exports::kjanat::actionlint0_2_0::template_effects as effects;
@@ -212,11 +212,14 @@ pub fn metadata() -> Result<Value, Box<dyn std::error::Error>> {
     use actionlint_extension_api::package::ScriptPackage;
     use actionlint_extension_api::package::ScriptWorld;
     let descriptor = descriptor();
+    let metadata = engine::metadata();
     let package = ScriptPackage {
         identity: Identity {
             id: &descriptor.id,
             name: &descriptor.name,
-            description: "Hermetic Ruff engine for actionlint",
+            description: metadata["description"]
+                .as_str()
+                .ok_or("Ruff metadata description is not a string")?,
             license: "MIT",
             repository: "https://github.com/kjanat/actionlint-plugin-ruff",
             version: &descriptor.version,
@@ -226,7 +229,22 @@ pub fn metadata() -> Result<Value, Box<dyn std::error::Error>> {
         script_inputs: &[],
         license_text: "",
     };
-    Ok(serde_json::from_slice(&package.metadata()?)?)
+    let mut component: serde_json::Map<String, Value> =
+        serde_json::from_slice(&package.metadata()?)?;
+    let Value::Object(mut metadata) = metadata else {
+        return Err("Ruff metadata is not an object".into());
+    };
+    metadata.remove("abi_version");
+    metadata.remove("interfaces");
+    let Some(Value::Object(capabilities)) = component.remove("capabilities") else {
+        return Err("component metadata capabilities are not an object".into());
+    };
+    let Some(Value::Object(engine_capabilities)) = metadata.get_mut("capabilities") else {
+        return Err("Ruff metadata capabilities are not an object".into());
+    };
+    engine_capabilities.extend(capabilities);
+    metadata.extend(component);
+    Ok(Value::Object(metadata))
 }
 
 #[cfg(target_arch = "wasm32")]

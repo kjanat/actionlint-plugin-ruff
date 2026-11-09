@@ -80,4 +80,41 @@ fn metadata_and_descriptor_identify_the_same_engine() {
     assert_eq!(metadata["config_schema"], schema);
     assert_eq!(metadata["rules"][0]["options_schema"], schema);
     assert!(metadata.get("abi_version").is_none());
+    assert!(metadata.get("interfaces").is_none());
+    assert_eq!(metadata["transport"], "wasm-component");
+    assert_eq!(
+        metadata["wit_sha256"],
+        actionlint_extension_api::SCRIPT_ENGINE_02_WIT_SHA256
+    );
+    let core = actionlint_plugin_ruff::metadata();
+    for field in [
+        "description",
+        "homepage",
+        "documentation_url",
+        "update_url",
+        "update_format",
+        "languages",
+        "shells",
+        "file_extensions",
+        "conflicts",
+        "template_contract",
+    ] {
+        assert_eq!(metadata[field], core[field], "metadata field {field}");
+    }
+    for field in [
+        "check",
+        "validate_config",
+        "config_schema",
+        "noqa",
+        "filesystem",
+        "fixes",
+        "format",
+        "position_encoding",
+        "max_input_bytes",
+    ] {
+        assert_eq!(
+            metadata["capabilities"][field], core["capabilities"][field],
+            "capability {field}"
+        );
+    }
 }

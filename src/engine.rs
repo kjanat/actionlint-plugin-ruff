@@ -24,8 +24,8 @@ use serde_json::json;
 
 use crate::CheckRequest;
 
-// These options discover files, expand environment variables, or imply CLI side effects.
-// This is an adapter boundary, not a copy of Ruff's rule or Python-version catalog.
+// Reject options that discover files, expand environment variables, or change CLI behavior.
+// Ruff remains the source of supported rules and Python versions.
 pub(crate) const UNSUPPORTED_OPTIONS: &[&str] = &[
     "extend",
     "cache-dir",
@@ -61,7 +61,7 @@ pub(crate) fn settings(mut config: Value) -> Result<Settings, String> {
     let _guard = ValueSourceGuard::new(ValueSource::Cli, false);
     let options: Options =
         serde_json::from_value(config).map_err(|e| format!("invalid Ruff config: {e}"))?;
-    // An absolute virtual root prevents cwd or filesystem discovery during settings resolution.
+    // Resolve settings against a virtual root without scanning the working directory.
     let root = Path::new("/");
     let mut configuration = Configuration::from_options(options, None, root)
         .map_err(|e| format!("invalid Ruff config: {e}"))?;
@@ -87,13 +87,33 @@ impl From<SourceLocation> for Position {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Severity {
+    Info,
+    Warning,
+    Error,
+    Fatal,
+}
+
+impl From<ruff_db::diagnostic::Severity> for Severity {
+    fn from(value: ruff_db::diagnostic::Severity) -> Self {
+        match value {
+            ruff_db::diagnostic::Severity::Hint | ruff_db::diagnostic::Severity::Info => Self::Info,
+            ruff_db::diagnostic::Severity::Warning => Self::Warning,
+            ruff_db::diagnostic::Severity::Error => Self::Error,
+            ruff_db::diagnostic::Severity::Fatal => Self::Fatal,
+        }
+    }
+}
+
 #[derive(Serialize)]
 pub struct Diagnostic {
     pub template_effect: crate::template_effects::TemplateEffect,
     pub filename: String,
     pub code: String,
     pub name: String,
-    pub severity: ruff_db::diagnostic::Severity,
+    pub severity: Severity,
     pub message: String,
     pub location: Position,
     pub end_location: Position,
@@ -165,7 +185,7 @@ pub(crate) fn check(request: CheckRequest) -> Result<Vec<Diagnostic>, String> {
                 filename: request.filename.clone(),
                 code: diagnostic.secondary_code_or_id().to_string(),
                 name: diagnostic.id().as_str().to_string(),
-                severity: diagnostic.severity(),
+                severity: diagnostic.severity().into(),
                 message: diagnostic.concise_message().to_string(),
                 location: source
                     .source_location(range.start(), PositionEncoding::Utf32)

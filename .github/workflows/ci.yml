@@ -23,8 +23,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
       - parallel:
-          - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5
-          - uses: kjanat/runner@30f5787ff1f4947a419c6b67663fd26259007dc8 # master
+          - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+          - uses: kjanat/runner@97ed0af3ba6d6ac79cd2cb0782b6d762f15b8361 # master
           - uses: kjanat/setup-tombi@fa7a237e9661f88c78309b5214f4eb7cf0c7c5f6 # HEAD
           - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2
             with: { deno-version: v2.x, cache: "${{ env.TRUSTED }}" }
@@ -63,6 +63,18 @@ jobs:
       - name: Record tested package digest
         id: package
         run: python3 -B scripts/release.py verify
+      - name: Install the candidate and verify offline checking
+        uses: kjanat/actionlint-registry/check@master
+        with:
+          fixture: tests/installation.ts
+          artifact: artifacts/plugin.component.wasm
+          report: candidate.json
+      - name: Preserve installation evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: candidate-verification
+          path: candidate.json
+          if-no-files-found: error
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: actionlint-plugin-ruff

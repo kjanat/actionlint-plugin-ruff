@@ -22,7 +22,7 @@ fn asset(name: &str) -> PathBuf {
         .join(name)
 }
 
-// Deliberately reads only the first custom section, without loading a runtime or code.
+// Read the first custom section without loading a runtime or the code section.
 fn static_metadata(wasm: &[u8]) -> Result<&[u8]> {
     fn u32_leb(bytes: &[u8], offset: &mut usize) -> Result<u32> {
         let mut value = 0;
@@ -171,7 +171,7 @@ impl Host {
     }
 
     fn response(&mut self, packed: i64) -> Result<Value> {
-        // Preserve all bits, even when the signed WASM result is negative.
+        // Preserve the bit pattern when the signed WASM result is negative.
         let packed = packed as u64;
         let pointer = (packed >> 32) as u32;
         let length = packed as u32;
@@ -292,7 +292,7 @@ fn rust_executes_the_same_v1_artifact_as_go_and_typescript() -> Result {
         );
     }
     assert_eq!(host.invoke("check", b"not json")?["ok"], false);
-    // Runtime limits are a host policy, independent of the wire contract.
+    // The host sets runtime limits; the wire contract does not set them.
     host.store.set_fuel(0)?;
     let error = host
         .instance

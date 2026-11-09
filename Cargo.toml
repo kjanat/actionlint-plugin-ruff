@@ -1,9 +1,9 @@
 [package]
 name          = "actionlint-plugin-ruff"
-version       = "0.2.0"
+version       = "0.3.0"
 edition       = "2024"
 rust-version  = "1.97"
-description   = "Hermetic Ruff engine for actionlint, with a core WebAssembly JSON ABI"
+description   = "Run Ruff on actionlint Python snippets through WebAssembly"
 documentation = "https://github.com/kjanat/actionlint-plugin-ruff/blob/master/docs/plugin-contract.md"
 homepage      = "https://github.com/kjanat/actionlint-plugin-ruff"
 repository    = "https://github.com/kjanat/actionlint-plugin-ruff"
@@ -24,16 +24,16 @@ name = "ruff-plugin"
 path = "src/main.rs"
 
 [dependencies]
-ruff_linter = { version = "0.17.0" }
+ruff_linter = { version = "0.17.4" }
 
-ruff_db             = { version = "0.0.17" }
-ruff_python_ast     = { version = "0.0.17" }
-ruff_python_codegen = { version = "0.0.17" }
-ruff_python_index   = { version = "0.0.17" }
-ruff_python_parser  = { version = "0.0.17" }
-ruff_ranged_value   = { version = "0.0.17" }
-ruff_source_file    = { version = "0.0.17" }
-ruff_workspace      = { version = "0.0.17", features = ["schemars"] }
+ruff_db             = { version = "0.0.21" }
+ruff_python_ast     = { version = "0.0.21" }
+ruff_python_codegen = { version = "0.0.21" }
+ruff_python_index   = { version = "0.0.21" }
+ruff_python_parser  = { version = "0.0.21" }
+ruff_ranged_value   = { version = "0.0.21" }
+ruff_source_file    = { version = "0.0.21" }
+ruff_workspace      = { version = "0.0.21", features = ["schemars"] }
 
 schemars   = { version = "1.2.3" }
 serde      = { version = "1.0", features = ["derive"] }
@@ -44,8 +44,8 @@ default  = ["core-abi"]
 core-abi = []
 
 [patch.crates-io]
-# Ruff's browser clock pulls in JS bindings even though linting never uses it.
-# The core module has no clock imports; unexpected clock access traps on wasm32.
+# Replace Ruff's browser clock dependency so the guest needs no JavaScript imports.
+# An unexpected clock call traps on wasm32.
 web-time = { path = "crates/web-time" }
 
 [profile.dev]

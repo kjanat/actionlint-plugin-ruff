@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/api"
+	"github.com/kjanat/wazero"
+	"github.com/kjanat/wazero/api"
 )
 
 var wasmPath = flag.String("wasm", "../../artifacts/plugin.wasm.gz", "WASM artifact to verify (raw or gzip)")
@@ -135,7 +135,7 @@ func TestCoreModuleInGo(t *testing.T) {
 	}
 }
 
-// Keep this fixture frozen: new operations may add exports, but v1 must stay callable.
+// Keep the v1 signatures unchanged when adding exports.
 func verifyV1Exports(t *testing.T, compiled wazero.CompiledModule) {
 	t.Helper()
 	data, err := os.ReadFile("../fixtures/abi-v1.json")

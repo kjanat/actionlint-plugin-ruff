@@ -1,5 +1,5 @@
-import { requireInterface } from './contract.ts';
 import type { Metadata } from './contract.ts';
+import { requireInterface } from './contract.ts';
 export type { Metadata } from './contract.ts';
 
 interface Exports {
@@ -62,7 +62,7 @@ export class Ruff {
 		const pointer = Number(result >> 32n);
 		const length = Number(result & 0xffffffffn);
 		try {
-			// Calls can grow memory; obtain a fresh view after every call.
+			// A guest call can grow memory, so get a new view after each call.
 			const bytes = new Uint8Array(this.#exports.memory.buffer, pointer, length);
 			return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
 		} finally {

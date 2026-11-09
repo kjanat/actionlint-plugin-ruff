@@ -32,7 +32,7 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 		PluginVersion    string `json:"plugin_version"`
 		Repository       string `json:"repository"`
 		Interface        string `json:"interface"`
-		Contract         string `json:"wit_sha256"`
+		WITSHA256        string `json:"wit_sha256"`
 		TemplateContract string `json:"template_contract"`
 	}
 	if err := json.Unmarshal(metadata, &declaration); err != nil {
@@ -52,7 +52,7 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 	}
 	normalizedWIT := bytes.ReplaceAll(wit, []byte("\r\n"), []byte("\n"))
 	contract := sha256.Sum256(normalizedWIT)
-	if declaration.Contract != hex.EncodeToString(contract[:]) {
+	if declaration.WITSHA256 != hex.EncodeToString(contract[:]) {
 		t.Fatal("packaged component does not identify the vendored WIT revision")
 	}
 	checksums, err := os.ReadFile(filepath.Join(directory, "SHA256SUMS"))
@@ -80,7 +80,7 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 			if inspected.Info.Kind != pluginartifact.Component || inspected.Info.SHA256 != digestHex || !bytes.Equal(inspected.Info.Metadata, metadata) {
 				t.Fatal("public inspection lost component metadata or byte identity")
 			}
-			t.Logf("%s sha256:%s API:%s#sha256=%s", filename, digestHex, declaration.Interface, declaration.Contract)
+			t.Logf("%s sha256:%s API:%s#sha256=%s", filename, digestHex, declaration.Interface, declaration.WITSHA256)
 			engine, err := componenthost.Load(ctx, path, componenthost.Options{Timeout: time.Minute})
 			if err != nil {
 				t.Fatal(err)
@@ -177,8 +177,8 @@ func checkWorkflow(t *testing.T, ctx context.Context, backend checkinputs.Script
 	}
 }
 
-// Runtime negotiation validates the plugin contract. Changing package identity
-// or display text must not change template handling or source mapping.
+// A different provider identity and diagnostic text must not change expression
+// handling or source mapping after contract negotiation.
 type presentationIndependentBackend struct{ *componenthost.Plugin }
 
 func (b presentationIndependentBackend) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
