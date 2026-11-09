@@ -248,4 +248,6 @@ pub fn metadata() -> Result<Value, Box<dyn std::error::Error>> {
 }
 
 #[cfg(target_arch = "wasm32")]
-actionlint_extension_api::script_engine::v0_2::export_template_script_engine_v0_2!(Plugin);
+actionlint_extension_api::script_engine::v0_2::export_template_script_engine_v0_2!(
+    Plugin with_types_in actionlint_extension_api::script_engine::v0_2
+);
