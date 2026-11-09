@@ -25,7 +25,6 @@ jobs:
       - parallel:
           - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
           - uses: kjanat/runner@97ed0af3ba6d6ac79cd2cb0782b6d762f15b8361 # master
-          - uses: kjanat/setup-tombi@fa7a237e9661f88c78309b5214f4eb7cf0c7c5f6 # HEAD
           - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2
             with: { deno-version: v2.x, cache: "${{ env.TRUSTED }}" }
           - name: Install pinned Rust toolchain and WASM target
