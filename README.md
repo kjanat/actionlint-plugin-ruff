@@ -10,22 +10,19 @@ rule catalogs or checked-in Ruff schemas. `Cargo.toml` uses Ruff's published cra
 and companion crates 0.0.17. `Cargo.lock` records the resolved versions and package checksums.
 
 The actionlint host tests check the actual packaged artifacts. The core module also runs through independent
-Go, Rust, and TypeScript hosts. The component uses the vendored
-[WIT interface](vendor/actionlint-extension-api/wit/script-engine.wit);
+Go, Rust, and TypeScript hosts. The component uses the SDK's
+[WIT interface](https://github.com/kjanat/actionlint/blob/ab420b66fb98af9d993c176e97506ecec9d3a396/plugins/sdk/rust/wit/script-engine.wit);
 changing host language does not require rebuilding either portable artifact.
 CI runs both packaged transports through actionlint on Linux, macOS, and Windows using the same artifact bytes,
 including cold loading with the host's default limits.
 
-The vendored SDK and Go host tests select actionlint commit
-`99a250b29aaadfdb2d95a0c6ab954d3f9f11bdc8`. The
-[snapshot manifest](vendor/actionlint-extension-api.snapshot.json) records the source blobs and hashes without local
-patches. The unpublished Go test modules use the actionlint module prefix to access its private host packages.
-Distributed plugins use the Wasm contracts. Builds need no sibling actionlint checkout or module replacement.
-Update the snapshot as a unit; never edit its WIT independently.
+Cargo fetches the component SDK at the Git revision pinned in `crates/component/Cargo.toml` and `Cargo.lock`.
+The Go integration tests use the same actionlint revision. The vendor snapshot is a WIT-digest test fixture;
+component builds use the SDK fetched by Cargo.
 
 ## Build and verify
 
-Requirements: Rust 1.98 with the `wasm32-unknown-unknown` target (configured in
+Requirements: Rust 1.99 with the `wasm32-unknown-unknown` target (configured in
 `rust-toolchain.toml`), Go 1.27.2,
 Deno 2, and Binaryen's `wasm-opt` version 133. `mise install` provides Go, Deno, Binaryen, and the documentation tools.
 

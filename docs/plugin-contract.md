@@ -33,7 +33,7 @@ forward an explicit target only when configured or inferred from an interpreter.
 
 New integrations use `artifacts/plugin.component.wasm` or its gzip form. The component exports
 `kjanat:actionlint/script-engine@0.2.0`, defined in
-[`vendor/actionlint-extension-api/wit/script-engine.wit`](../vendor/actionlint-extension-api/wit/script-engine.wit).
+[the pinned SDK WIT](https://github.com/kjanat/actionlint/blob/ab420b66fb98af9d993c176e97506ecec9d3a396/plugins/sdk/rust/wit/script-engine.wit).
 
 `describe()` returns typed plugin/engine identity, supported shells and one rule descriptor.
 `validate-config()` accepts the engine's JSON options object and returns a typed success/error result.
@@ -54,8 +54,8 @@ The existing clock facade traps if analysis unexpectedly requests time.
 The public-loader tests check both exact packaged variants, typed configuration errors, Unicode/CRLF
 coordinates and workflow expression masking/source mapping. Tests use the public host API, including
 an arbitrary provider identity and changed diagnostic presentation; they never read host source files.
-The integration modules pin actionlint commit `8836017f3c5150fcd6eba7b4ae64658b2d5c53e1`, the same revision
-as the vendored SDK; guest builds never depend on a sibling checkout.
+The integration modules and the Cargo SDK dependency use actionlint revision
+`ab420b66fb98af9d993c176e97506ecec9d3a396`. Guest builds do not depend on a sibling checkout.
 
 The following core ABI remains supported independently for existing consumers.
 

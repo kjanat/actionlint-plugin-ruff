@@ -32,7 +32,7 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 		PluginVersion    string `json:"plugin_version"`
 		Repository       string `json:"repository"`
 		Interface        string `json:"interface"`
-		Contract         string `json:"contract_sha256"`
+		Contract         string `json:"wit_sha256"`
 		TemplateContract string `json:"template_contract"`
 	}
 	if err := json.Unmarshal(metadata, &declaration); err != nil {

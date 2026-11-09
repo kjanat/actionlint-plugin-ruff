@@ -3,6 +3,19 @@
 version = 4
 
 [[package]]
+name = "actionlint-extension-api"
+version = "0.2.0"
+source = "git+https://github.com/kjanat/actionlint?rev=ab420b66fb98af9d993c176e97506ecec9d3a396#ab420b66fb98af9d993c176e97506ecec9d3a396"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2",
+ "wasm-encoder 0.263.0",
+ "wasmparser 0.263.0",
+ "wit-bindgen",
+]
+
+[[package]]
 name = "actionlint-plugin-ruff"
 version = "0.2.0"
 dependencies = [
@@ -24,10 +37,9 @@ dependencies = [
 name = "actionlint-plugin-ruff-component"
 version = "0.2.0"
 dependencies = [
+ "actionlint-extension-api",
  "actionlint-plugin-ruff",
  "serde_json",
- "sha2",
- "wit-bindgen",
  "wit-component 0.263.0",
 ]
 
@@ -691,6 +703,8 @@ dependencies = [
  "allocator-api2",
  "equivalent",
  "foldhash",
+ "serde",
+ "serde_core",
 ]
 
 [[package]]
@@ -2932,6 +2946,7 @@ dependencies = [
  "hashbrown 0.17.1",
  "indexmap",
  "semver",
+ "serde",
 ]
 
 [[package]]
