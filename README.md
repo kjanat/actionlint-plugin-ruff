@@ -126,8 +126,9 @@ schema snapshot to update. Ruff API changes may require changes to the wrapper.
 
 Cargo builds the component with the actionlint SDK at revision
 `ab420b66fb98af9d993c176e97506ecec9d3a396`, pinned in `crates/component/Cargo.toml` and `Cargo.lock`.
-The Go integration tests use the same actionlint revision. Their unpublished modules use the actionlint module prefix
-to access private host packages. A build does not need a sibling actionlint checkout or module replacement.
+The Go integration tests use the actionlint revision in `tests/component/go.mod`. Their unpublished modules use the
+actionlint module prefix to access private host packages. A build does not need a sibling actionlint checkout or module
+replacement.
 The vendored WIT is a digest test fixture, recorded in the
 [snapshot manifest](vendor/actionlint-extension-api.snapshot.json). It does not supply the component build's SDK.
 Update that fixture as a unit and do not edit its WIT separately.

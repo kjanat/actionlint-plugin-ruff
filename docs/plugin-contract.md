@@ -30,8 +30,9 @@ The guest targets `wasm32-unknown-unknown`. The Cargo-locked `wit-component` enc
 imports no filesystem, credentials, clock, or network services. A clock request traps. Public-loader tests exercise
 both packaged forms, configuration errors, Unicode and CRLF coordinates, expression masking, and YAML source mapping.
 They use the public host API and vary the provider identity and diagnostic text. Guest builds do not need a sibling
-checkout. The Cargo SDK dependency and both Go integration modules pin actionlint revision
-`ab420b66fb98af9d993c176e97506ecec9d3a396`. The vendored WIT supplies only a digest test fixture.
+checkout. The Cargo SDK dependency pins actionlint revision `ab420b66fb98af9d993c176e97506ecec9d3a396`. The Go
+integration modules use the actionlint revision in `tests/component/go.mod`. The vendored WIT supplies only a digest
+test fixture.
 
 ## Template effects
 
