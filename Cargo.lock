@@ -5,7 +5,7 @@ version = 4
 [[package]]
 name = "actionlint-extension-api"
 version = "0.2.0"
-source = "git+https://github.com/kjanat/actionlint?rev=ab420b66fb98af9d993c176e97506ecec9d3a396#ab420b66fb98af9d993c176e97506ecec9d3a396"
+source = "git+https://github.com/kjanat/actionlint?rev=6399d6f15229554b79b7a8b127109d9937ffc912#6399d6f15229554b79b7a8b127109d9937ffc912"
 dependencies = [
  "serde",
  "serde_json",
