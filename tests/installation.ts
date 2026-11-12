@@ -9,6 +9,7 @@ interface Context {
 }
 
 const workflow = `on: push
+permissions: {}
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -37,7 +38,7 @@ export async function verify({ run }: Context): Promise<{ checks: string[]; prob
 	assert.equal(diagnostic.rule, 'ruff');
 	assert.equal(diagnostic.code, 'F821');
 	assert.equal(diagnostic.message, 'Undefined name `missing`');
-	assert.deepEqual(diagnostic.start, { line: 7, column: 20 });
-	assert.deepEqual(diagnostic.end, { line: 7, column: 27 });
+	assert.deepEqual(diagnostic.start, { line: 8, column: 20 });
+	assert.deepEqual(diagnostic.end, { line: 8, column: 27 });
 	return { checks: ['F821 through the Python script engine', 'F821 workflow position'], probe };
 }

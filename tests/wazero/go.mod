@@ -2,7 +2,7 @@ module actionlint.kjanat.dev/v2/plugins/ruff/tests/wazero
 
 go 1.27.2
 
-toolchain go1.27.3
+toolchain go1.27.4
 
 require (
 	actionlint.kjanat.dev/v2 v2.0.0-20261109061640-ab420b66fb98

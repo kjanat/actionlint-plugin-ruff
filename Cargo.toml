@@ -11,10 +11,9 @@ license       = "MIT"
 publish       = false
 default-run   = "ruff-plugin"
 
-[workspace]
-resolver = "3"
-members  = ["crates/component"]
-exclude  = ["tests/rust-host"]
+[features]
+default  = ["core-abi"]
+core-abi = []
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -39,14 +38,10 @@ schemars   = { version = "1.2.3" }
 serde      = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
 
-[features]
-default  = ["core-abi"]
-core-abi = []
-
-[patch.crates-io]
-# Replace Ruff's browser clock dependency so the guest needs no JavaScript imports.
-# An unexpected clock call traps on wasm32.
-web-time = { path = "crates/web-time" }
+[workspace]
+resolver = "3"
+members  = ["crates/component"]
+exclude  = ["tests/rust-host"]
 
 [profile.dev]
 debug = 0
@@ -57,3 +52,8 @@ strip         = "debuginfo"
 lto           = "thin"
 panic         = "abort"
 codegen-units = 1
+
+[patch.crates-io]
+# Replace Ruff's browser clock dependency so the guest needs no JavaScript imports.
+# An unexpected clock call traps on wasm32.
+web-time = { path = "crates/web-time" }
