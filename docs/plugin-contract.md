@@ -7,7 +7,8 @@ checks one sanitized Python snippet at a time and validates Ruff options.
 ## Component interface
 
 New hosts should load `artifacts/plugin.component.wasm` or its gzip copy. The component implements
-`kjanat:actionlint/script-engine@0.2.0`. Its [WIT definition](../vendor/actionlint-extension-api/wit/script-engine.wit)
+`kjanat:actionlint/script-engine@0.2.0`. Its
+[SDK WIT definition](https://github.com/kjanat/actionlint/blob/ab420b66fb98af9d993c176e97506ecec9d3a396/plugins/sdk/rust/wit/script-engine.wit)
 defines these operations:
 
 - `describe()` returns the plugin and engine identity, supported shells, and one rule descriptor.
@@ -29,7 +30,8 @@ The guest targets `wasm32-unknown-unknown`. The Cargo-locked `wit-component` enc
 imports no filesystem, credentials, clock, or network services. A clock request traps. Public-loader tests exercise
 both packaged forms, configuration errors, Unicode and CRLF coordinates, expression masking, and YAML source mapping.
 They use the public host API and vary the provider identity and diagnostic text. Guest builds do not need a sibling
-checkout. The integration tests use the actionlint revision in `tests/component/go.mod`.
+checkout. The Cargo SDK dependency and both Go integration modules pin actionlint revision
+`ab420b66fb98af9d993c176e97506ecec9d3a396`. The vendored WIT supplies only a digest test fixture.
 
 ## Template effects
 

@@ -1,11 +1,11 @@
 use actionlint_plugin_ruff_component::Plugin;
-use actionlint_plugin_ruff_component::exports::kjanat::actionlint::script_engine::Guest;
-use actionlint_plugin_ruff_component::exports::kjanat::actionlint::script_engine::Request;
+use actionlint_extension_api::script_engine::v0_2::exports::kjanat::actionlint0_2_0::script_engine::Guest;
+use actionlint_extension_api::script_engine::v0_2::exports::kjanat::actionlint0_2_0::script_engine::Request;
 use serde_json::json;
 
 #[test]
 fn template_effects_are_typed_and_export_ranges_remain_precise() {
-    use actionlint_plugin_ruff_component::exports::kjanat::actionlint::template_effects as effects;
+    use actionlint_extension_api::script_engine::v0_2::exports::kjanat::actionlint0_2_0::template_effects as effects;
     assert_eq!(
         <Plugin as effects::Guest>::contract(),
         actionlint_plugin_ruff::template_effects::CONTRACT
@@ -66,7 +66,7 @@ fn typed_validation_and_checks_share_errors() {
 #[test]
 fn metadata_and_descriptor_identify_the_same_engine() {
     let descriptor = Plugin::describe();
-    let metadata = actionlint_plugin_ruff_component::metadata();
+    let metadata = actionlint_plugin_ruff_component::metadata().unwrap();
     assert_eq!(metadata["id"], descriptor.id);
     assert_eq!(metadata["plugin_version"], descriptor.version);
     assert_eq!(metadata["engine"]["name"], descriptor.engine);
@@ -80,4 +80,41 @@ fn metadata_and_descriptor_identify_the_same_engine() {
     assert_eq!(metadata["config_schema"], schema);
     assert_eq!(metadata["rules"][0]["options_schema"], schema);
     assert!(metadata.get("abi_version").is_none());
+    assert!(metadata.get("interfaces").is_none());
+    assert_eq!(metadata["transport"], "wasm-component");
+    assert_eq!(
+        metadata["wit_sha256"],
+        actionlint_extension_api::SCRIPT_ENGINE_02_WIT_SHA256
+    );
+    let core = actionlint_plugin_ruff::metadata();
+    for field in [
+        "description",
+        "homepage",
+        "documentation_url",
+        "update_url",
+        "update_format",
+        "languages",
+        "shells",
+        "file_extensions",
+        "conflicts",
+        "template_contract",
+    ] {
+        assert_eq!(metadata[field], core[field], "metadata field {field}");
+    }
+    for field in [
+        "check",
+        "validate_config",
+        "config_schema",
+        "noqa",
+        "filesystem",
+        "fixes",
+        "format",
+        "position_encoding",
+        "max_input_bytes",
+    ] {
+        assert_eq!(
+            metadata["capabilities"][field], core["capabilities"][field],
+            "capability {field}"
+        );
+    }
 }

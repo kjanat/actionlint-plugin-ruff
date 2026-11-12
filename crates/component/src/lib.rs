@@ -1,18 +1,10 @@
 //! Expose the Ruff analysis engine through a typed WebAssembly component.
 
+use actionlint_extension_api::script_engine::v0_2::exports::kjanat::actionlint0_2_0::script_engine as api;
+use actionlint_extension_api::script_engine::v0_2::exports::kjanat::actionlint0_2_0::template_effects as effects;
 use actionlint_plugin_ruff as engine;
 use serde_json::Value;
 use serde_json::json;
-use sha2::Digest;
-use sha2::Sha256;
-
-wit_bindgen::generate!({
-    path: "../../vendor/actionlint-extension-api/wit",
-    world: "template-script-engine-plugin",
-});
-
-use exports::kjanat::actionlint::script_engine as api;
-use exports::kjanat::actionlint::template_effects as effects;
 
 pub struct Plugin;
 
@@ -213,32 +205,49 @@ pub fn descriptor() -> api::Descriptor {
     }
 }
 
-fn hex_lower(bytes: &[u8]) -> String {
-    const HEX: &[u8; 16] = b"0123456789abcdef";
-    let mut out = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        out.push(char::from(HEX[usize::from(byte >> 4)]));
-        out.push(char::from(HEX[usize::from(byte & 0x0f)]));
-    }
-    out
-}
-
-/// Record the WIT source used to build the packaged component.
-pub fn metadata() -> Value {
-    let mut value = engine::metadata();
-    let object = value.as_object_mut().expect("engine metadata is an object");
-    object.remove("abi_version");
-    object.remove("interfaces");
-    value["transport"] = json!("wasm-component");
-    value["interface"] = json!("kjanat:actionlint/script-engine@0.2.0");
-    value["wit_sha256"] = json!(hex_lower(&Sha256::digest(
-        include_str!("../../../vendor/actionlint-extension-api/wit/script-engine.wit")
-            .replace("\r\n", "\n")
-            .as_bytes()
-    )));
-    value["capabilities"]["script_shells"] = json!(["python"]);
-    value
+/// Generates component discovery metadata from the descriptor and SDK.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn metadata() -> Result<Value, Box<dyn std::error::Error>> {
+    use actionlint_extension_api::package::Identity;
+    use actionlint_extension_api::package::ScriptPackage;
+    use actionlint_extension_api::package::ScriptWorld;
+    let descriptor = descriptor();
+    let metadata = engine::metadata();
+    let package = ScriptPackage {
+        identity: Identity {
+            id: &descriptor.id,
+            name: &descriptor.name,
+            description: metadata["description"]
+                .as_str()
+                .ok_or("Ruff metadata description is not a string")?,
+            license: "MIT",
+            repository: "https://github.com/kjanat/actionlint-plugin-ruff",
+            version: &descriptor.version,
+        },
+        descriptor: &descriptor,
+        world: ScriptWorld::TemplateScriptEngine,
+        script_inputs: &[],
+        license_text: "",
+    };
+    let mut component: serde_json::Map<String, Value> =
+        serde_json::from_slice(&package.metadata()?)?;
+    let Value::Object(mut metadata) = metadata else {
+        return Err("Ruff metadata is not an object".into());
+    };
+    metadata.remove("abi_version");
+    metadata.remove("interfaces");
+    let Some(Value::Object(capabilities)) = component.remove("capabilities") else {
+        return Err("component metadata capabilities are not an object".into());
+    };
+    let Some(Value::Object(engine_capabilities)) = metadata.get_mut("capabilities") else {
+        return Err("Ruff metadata capabilities are not an object".into());
+    };
+    engine_capabilities.extend(capabilities);
+    metadata.extend(component);
+    Ok(Value::Object(metadata))
 }
 
 #[cfg(target_arch = "wasm32")]
-export!(Plugin);
+actionlint_extension_api::script_engine::v0_2::export_template_script_engine_v0_2!(
+    Plugin with_types_in actionlint_extension_api::script_engine::v0_2
+);

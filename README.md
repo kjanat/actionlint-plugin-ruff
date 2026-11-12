@@ -124,11 +124,13 @@ dependencies, update and review `Cargo.lock`, and run the checks above. The buil
 `ruff_linter::VERSION` and the schema from `ruff_workspace::options::Options`; there is no separate rule catalog or
 schema snapshot to update. Ruff API changes may require changes to the wrapper.
 
-The vendored SDK comes from actionlint commit `99a250b29aaadfdb2d95a0c6ab954d3f9f11bdc8`. The
-[snapshot manifest](vendor/actionlint-extension-api.snapshot.json) records the source blobs and hashes. Update the
-snapshot as a unit and do not edit its WIT separately. The Go integration tests use the actionlint revision in
-`tests/component/go.mod`. Their unpublished modules use the actionlint module prefix to access private host packages.
-A build does not need a sibling actionlint checkout or module replacement.
+Cargo builds the component with the actionlint SDK at revision
+`ab420b66fb98af9d993c176e97506ecec9d3a396`, pinned in `crates/component/Cargo.toml` and `Cargo.lock`.
+The Go integration tests use the same actionlint revision. Their unpublished modules use the actionlint module prefix
+to access private host packages. A build does not need a sibling actionlint checkout or module replacement.
+The vendored WIT is a digest test fixture, recorded in the
+[snapshot manifest](vendor/actionlint-extension-api.snapshot.json). It does not supply the component build's SDK.
+Update that fixture as a unit and do not edit its WIT separately.
 
 ## Publish
 

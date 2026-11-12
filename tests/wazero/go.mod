@@ -5,12 +5,13 @@ go 1.27.2
 toolchain go1.27.4
 
 require (
-	actionlint.kjanat.dev/v2 v2.0.0-20261108044617-1f405551cd5e
+	actionlint.kjanat.dev/v2 v2.0.0-20261109061640-ab420b66fb98
 	github.com/kjanat/wazero v1.11.1
 )
 
 require (
 	github.com/bmatcuk/doublestar/v4 v4.10.3 // indirect
+	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/itchyny/gojq v0.12.19 // indirect
 	github.com/itchyny/timefmt-go v0.1.8 // indirect
 	github.com/kjanat/go-yaml/v4 v4.0.0-rc.7 // indirect
