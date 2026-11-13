@@ -291,3 +291,33 @@ fn severities_use_the_contract_values() {
         "error"
     );
 }
+
+#[test]
+fn template_effects_follow_ruff_diagnostics() {
+    let cases = [
+        (
+            "E501",
+            "print('this is a deliberately long string literal')\n",
+            "line-length",
+        ),
+        ("F401", "import os\n", "complete-references"),
+        ("F821", "print(missing)\n", "opaque-name"),
+        ("UP034", "print((\"hello\"))\n", "opaque-parentheses"),
+        ("F541", "print(f\"hello\")\n", "string-contents"),
+        ("D400", "\"\"\"Summary\"\"\"\n", "docstring-summary"),
+        ("F822", "__all__ = [\"missing\"]\n", "exported-name"),
+        ("F501", "\"%\" % 1\n", "percent-conversion"),
+        ("E711", "if value == None: pass\n", "none"),
+    ];
+    for (code, source, effect) in cases {
+        let result = lint(
+            source,
+            json!({"line-length": 20, "lint": {"select": [code]}}),
+        );
+        assert_eq!(codes(&result), [code], "{code}: {result}");
+        assert_eq!(
+            result["diagnostics"][0]["template_effect"], effect,
+            "{code}"
+        );
+    }
+}

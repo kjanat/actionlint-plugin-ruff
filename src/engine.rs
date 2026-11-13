@@ -39,9 +39,6 @@ pub(crate) const UNSUPPORTED_OPTIONS: &[&str] = &[
 ];
 
 pub(crate) fn settings(mut config: Value) -> Result<Settings, String> {
-    if crate::ENGINE_VERSION != crate::template_effects::REVIEWED_ENGINE_VERSION {
-        return Err("Ruff version has no reviewed template-effects adapter".into());
-    }
     let object = config
         .as_object_mut()
         .ok_or("config must be a Ruff options object")?;
