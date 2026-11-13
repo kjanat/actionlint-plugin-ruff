@@ -120,7 +120,8 @@ cargo run --locked -- schema
 ```
 
 `Cargo.toml` declares the Ruff crates from crates.io, and `Cargo.lock` pins their resolved versions. To update Ruff,
-change all Ruff dependencies, update and review `Cargo.lock`, and run the checks above. The build obtains the version from
+change all Ruff dependencies, update and review `Cargo.lock`, and run the checks above. The build obtains the version
+from
 `ruff_linter::VERSION` and the schema from `ruff_workspace::options::Options`; there is no separate rule catalog or
 schema snapshot to update. Ruff API changes may require changes to the wrapper.
 

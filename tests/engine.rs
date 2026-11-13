@@ -310,8 +310,14 @@ fn template_effects_follow_ruff_diagnostics() {
         ("E711", "if value == None: pass\n", "none"),
     ];
     for (code, source, effect) in cases {
-        let result = lint(source, json!({"line-length": 20, "lint": {"select": [code]}}));
+        let result = lint(
+            source,
+            json!({"line-length": 20, "lint": {"select": [code]}}),
+        );
         assert_eq!(codes(&result), [code], "{code}: {result}");
-        assert_eq!(result["diagnostics"][0]["template_effect"], effect, "{code}");
+        assert_eq!(
+            result["diagnostics"][0]["template_effect"], effect,
+            "{code}"
+        );
     }
 }
