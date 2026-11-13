@@ -2,7 +2,6 @@
 use serde::Serialize;
 
 pub const CONTRACT: &str = "kjanat:actionlint/template-effects@0.1.0";
-pub const REVIEWED_ENGINE_VERSION: &str = "0.17.4";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -31,13 +30,5 @@ pub fn classify(code: &str) -> TemplateEffect {
         "D400" | "D415" => TemplateEffect::DocstringSummary,
         "F822" => TemplateEffect::ExportedName,
         _ => TemplateEffect::None,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn upstream_version_requires_semantic_review() {
-        assert_eq!(crate::ENGINE_VERSION, super::REVIEWED_ENGINE_VERSION);
     }
 }

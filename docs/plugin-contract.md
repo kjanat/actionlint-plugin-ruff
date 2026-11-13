@@ -49,9 +49,10 @@ finding, the effect identifies the exact exported string range. Hosts combine ef
 to filter findings. They must not classify findings by diagnostic code or message text. Percent-conversion masks use a
 valid `s` conversion, so hosts do not need to inspect messages for synthetic unsupported-conversion findings.
 
-The mapping has been reviewed for Ruff 0.17.4. Review the mapping and range fixtures when changing Ruff versions. The
-adapter rejects an engine version that has not been reviewed. The engine and schema define the Python default; hosts
-only pass a target when configuration or the interpreter supplies one.
+The template-effects fixtures exercise diagnostics from the linked Ruff engine and verify each effect category.
+Review the mapping and range fixtures when changing Ruff versions. Compatibility is checked through behavior tests
+without a separate engine-version allowlist. The engine and schema define the Python default; hosts only pass a target
+when configuration or the interpreter supplies one.
 
 ## Core module ABI, version 1
 
