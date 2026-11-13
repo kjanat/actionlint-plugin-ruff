@@ -306,7 +306,7 @@ fn template_effects_follow_ruff_diagnostics() {
         ("F541", "print(f\"hello\")\n", "string-contents"),
         ("D400", "\"\"\"Summary\"\"\"\n", "docstring-summary"),
         ("F822", "__all__ = [\"missing\"]\n", "exported-name"),
-        ("F501", "print(\"%q\" % 1)\n", "percent-conversion"),
+        ("F501", "\"%\" % 1\n", "percent-conversion"),
         ("E711", "if value == None: pass\n", "none"),
     ];
     for (code, source, effect) in cases {
