@@ -17,12 +17,12 @@ name = "componentize"
 path = "src/bin/componentize.rs"
 
 [dependencies]
-actionlint-extension-api = { git = "https://github.com/kjanat/actionlint", rev = "9c5587e4aa1557688c6a06d86db9a3d9b792da5d" }
+actionlint-extension-api = { git = "https://github.com/kjanat/actionlint", rev = "8d8c9782a68f5ca91fd16719f7baddc26a3dd1d2" }
 actionlint-plugin-ruff   = { path = "../..", default-features = false }
 serde_json               = "1.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-actionlint-extension-api = { git = "https://github.com/kjanat/actionlint", rev = "9c5587e4aa1557688c6a06d86db9a3d9b792da5d", features = [
+actionlint-extension-api = { git = "https://github.com/kjanat/actionlint", rev = "8d8c9782a68f5ca91fd16719f7baddc26a3dd1d2", features = [
   "package"
 ] }
 wit-component            = "0.263.0"
