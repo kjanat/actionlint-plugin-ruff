@@ -12,8 +12,8 @@
 			"groupName": "ruff crates"
 		},
 		{
-			"description": "Update the actionlint host and registry actions in one pull request.",
-			"matchPackageNames": ["actionlint.kjanat.dev/v2", "kjanat/actionlint-registry"],
+			"description": "Update the actionlint host, plugin SDK, and registry actions in one pull request.",
+			"matchPackageNames": ["actionlint.kjanat.dev/v2", "actionlint-extension-api", "kjanat/actionlint-registry"],
 			"groupName": "actionlint integration"
 		},
 		{
