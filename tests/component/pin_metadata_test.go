@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	"actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
 func TestRegistryPinAcceptsSDKWITChecksum(t *testing.T) {
@@ -21,7 +21,7 @@ func TestRegistryPinAcceptsSDKWITChecksum(t *testing.T) {
 	checksum := hex.EncodeToString(digest[:])
 	const iface = "kjanat:actionlint/script-engine@0.2.0"
 	const artifactDigest = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	pin := installation.Pin{
+	pin := pluginregistry.Pin{
 		Name: "github.com/kjanat/actionlint-plugin-ruff", PluginID: "actionlint-plugin-ruff", Version: "v0.2.0",
 		Kind: artifacts.Component, SHA256: artifactDigest, Contract: iface + "#sha256=" + checksum,
 	}
@@ -33,7 +33,7 @@ func TestRegistryPinAcceptsSDKWITChecksum(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	info := artifacts.Info{Kind: artifacts.Component, SHA256: artifactDigest, Metadata: metadata}
+	info := artifacts.ArtifactProvenance{Kind: artifacts.Component, SHA256: artifactDigest, Metadata: metadata}
 	if err := pin.Verify(info); err != nil {
 		t.Fatalf("SDK metadata rejected: %v", err)
 	}

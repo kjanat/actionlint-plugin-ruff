@@ -12,13 +12,14 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	modulehost "actionlint.kjanat.dev/v2/internal/plugins/execution/module"
-
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
+	modulehost "actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
 )
 
 // The standalone wazero test checks the frozen ABI. This test uses actionlint's
@@ -66,7 +67,7 @@ func TestPackagedEngineThroughActionlint(t *testing.T) {
 				t.Fatalf("public inspection lost artifact identity: kind=%s digest=%s", inspected.Info.Kind, inspected.Info.SHA256)
 			}
 			t.Logf("verified packaged %s@%s %s sha256:%s", declaration.ID, declaration.PluginVersion, filename, hexDigest)
-			engine, err := modulehost.Load(ctx, path, modulehost.Options{CacheDir: cache, Timeout: time.Minute})
+			engine, err := modulehost.LoadModuleEngine(ctx, path, modulehost.Options{CacheDir: cache, Limits: guestlimits.Limits{Timeout: time.Minute}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -82,7 +83,7 @@ func TestPackagedEngineThroughActionlint(t *testing.T) {
 				len(runtimeMetadata.ConfigSchema) == 0 {
 				t.Fatalf("unexpected runtime metadata: %+v", runtimeMetadata)
 			}
-			var validator checkinputs.ScriptConfigValidator = engine
+			var validator scriptengine.ConfigValidator = engine
 			settings := json.RawMessage(`{"lint":{"select":["F821"]}}`)
 			if err := validator.ValidateConfig(ctx, settings); err != nil {
 				t.Fatalf("valid Ruff configuration rejected: %v", err)
@@ -90,11 +91,11 @@ func TestPackagedEngineThroughActionlint(t *testing.T) {
 			if err := validator.ValidateConfig(ctx, json.RawMessage(`{"lint":{"select":["FAKE999"]}}`)); err == nil {
 				t.Fatal("invalid Ruff selector accepted through public validator")
 			}
-			var backend checkinputs.ScriptBackend = engine
-			if engine.ScriptDescriptor().TemplateContract != checkinputs.TemplateEffectsContract {
+			var backend scriptengine.Backend = engine
+			if engine.ScriptDescriptor().TemplateContract != scriptengine.TemplateEffectsContract {
 				t.Fatal("public core backend lost negotiated template contract")
 			}
-			findings, err := backend.Check(ctx, checkinputs.ScriptRequest{
+			findings, err := backend.Check(ctx, scriptengine.Request{
 				Source: "label = 'é🦀'; print(missing) # noqa\r\n", Filename: "workflow.step.py", Config: settings,
 			})
 			if err != nil {
@@ -104,9 +105,9 @@ func TestPackagedEngineThroughActionlint(t *testing.T) {
 				t.Fatalf("want one unsuppressed F821 finding: %+v", findings)
 			}
 			finding := findings[0]
-			if finding.Code != "F821" || finding.TemplateEffect != checkinputs.TemplateEffectOpaqueName || finding.Filename != "workflow.step.py" ||
-				finding.Location != (checkinputs.ScriptPosition{Row: 1, Column: 21}) ||
-				finding.EndLocation != (checkinputs.ScriptPosition{Row: 1, Column: 28}) ||
+			if finding.Code != "F821" || finding.TemplateEffect != scriptengine.TemplateEffectOpaqueName || finding.Filename != "workflow.step.py" ||
+				finding.Location != (sourcetext.Position{Line: 1, Column: 21}) ||
+				finding.EndLocation != (sourcetext.Position{Line: 1, Column: 28}) ||
 				!strings.Contains(finding.Message, "missing") {
 				t.Fatalf("public backend changed Unicode range or diagnostic: %+v", finding)
 			}
@@ -119,7 +120,7 @@ func TestPackagedEngineWithDefaultLimits(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 	start := time.Now()
-	engine, err := modulehost.Load(ctx, *wasmPath, modulehost.Options{})
+	engine, err := modulehost.LoadModuleEngine(ctx, *wasmPath, modulehost.Options{})
 	t.Logf("default-limit cold load: %s", time.Since(start))
 	if err != nil {
 		t.Fatal(err)
@@ -130,7 +131,7 @@ func TestPackagedEngineWithDefaultLimits(t *testing.T) {
 		}
 	}()
 	start = time.Now()
-	findings, err := engine.Check(ctx, checkinputs.ScriptRequest{
+	findings, err := engine.Check(ctx, scriptengine.Request{
 		Source: "print(missing)\n", Filename: "step.py",
 		Config: json.RawMessage(`{"lint":{"select":["F821"]}}`),
 	})
@@ -160,14 +161,14 @@ func packagedChecksums(t *testing.T, directory string) map[string]string {
 	return checksums
 }
 
-func checkWorkflowMapping(t *testing.T, ctx context.Context, backend checkinputs.ScriptBackend) {
+func checkWorkflowMapping(t *testing.T, ctx context.Context, backend scriptengine.Backend) {
 	t.Helper()
-	cfg, err := checking.ConfigurationRules().Parse([]byte("tools:\n  ruff:\n    select: [F821]\n"))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("tools:\n  ruff:\n    select: [F821]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := checking.Analyze(ctx, checking.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Backend: backend}})},
-		[]workspace.Source{{Path: "ci.yml", Config: cfg, Content: []byte(
+	result, err := checking.Analyze(ctx, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"ruff": {Backend: backend}})},
+		[]workspace.InputFile{{Path: "ci.yml", Config: cfg, Content: []byte(
 			"on: push\r\n" +
 				"jobs:\r\n" +
 				"  build:\r\n" +
