@@ -13,7 +13,12 @@
 		},
 		{
 			"description": "Update the actionlint host, plugin SDK, and registry actions in one pull request.",
-			"matchPackageNames": ["actionlint.kjanat.dev/v2", "https://github.com/kjanat/actionlint", "actionlint-extension-api", "kjanat/actionlint-registry"],
+			"matchPackageNames": [
+				"actionlint.kjanat.dev/v2",
+				"https://github.com/kjanat/actionlint",
+				"actionlint-extension-api",
+				"kjanat/actionlint-registry"
+			],
 			"groupName": "actionlint integration"
 		},
 		{
