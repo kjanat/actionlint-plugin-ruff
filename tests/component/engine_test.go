@@ -12,13 +12,14 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	componenthost "actionlint.kjanat.dev/v2/internal/plugins/execution/component"
-
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	componenthost "actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 )
 
 func TestPackagedScriptEngineComponent(t *testing.T) {
@@ -43,7 +44,7 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 		declaration.Interface != "kjanat:actionlint/script-engine@0.2.0" {
 		t.Fatalf("unexpected component identity: %+v", declaration)
 	}
-	if declaration.TemplateContract != checkinputs.TemplateEffectsContract {
+	if declaration.TemplateContract != scriptengine.TemplateEffectsContract {
 		t.Fatalf("missing template semantics: %q", declaration.TemplateContract)
 	}
 	wit, err := os.ReadFile("../../vendor/actionlint-extension-api/wit/script-engine.wit")
@@ -81,7 +82,7 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 				t.Fatal("public inspection lost component metadata or byte identity")
 			}
 			t.Logf("%s sha256:%s API:%s#sha256=%s", filename, digestHex, declaration.Interface, declaration.WITSHA256)
-			engine, err := componenthost.Load(ctx, path, componenthost.Options{Timeout: time.Minute})
+			engine, err := componenthost.LoadComponentPlugin(ctx, path, componenthost.Options{Limits: guestlimits.Limits{Timeout: time.Minute}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -94,14 +95,14 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 				t.Fatal("component must expose only the script-engine role")
 			}
 			descriptor := engine.ScriptDescriptor()
-			if descriptor.TemplateContract != checkinputs.TemplateEffectsContract {
+			if descriptor.TemplateContract != scriptengine.TemplateEffectsContract {
 				t.Fatalf("host did not negotiate template effects: %+v", descriptor)
 			}
 			if descriptor.ID != declaration.ID || descriptor.Version != declaration.PluginVersion ||
 				descriptor.Engine != "ruff" || descriptor.Rule.Name != "ruff" {
 				t.Fatalf("unexpected script-engine descriptor: %+v", descriptor)
 			}
-			var validator checkinputs.ScriptConfigValidator = engine
+			var validator scriptengine.ConfigValidator = engine
 			settings := json.RawMessage(`{"lint":{"select":["F821"]}}`)
 			if err := validator.ValidateConfig(ctx, settings); err != nil {
 				t.Fatal(err)
@@ -109,31 +110,31 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 			if err := validator.ValidateConfig(ctx, json.RawMessage(`{"lint":{"select":["FAKE999"]}}`)); err == nil {
 				t.Fatal("component accepted invalid engine options")
 			}
-			var backend checkinputs.ScriptBackend = engine
-			diagnostics, err := backend.Check(ctx, checkinputs.ScriptRequest{
+			var backend scriptengine.Backend = engine
+			diagnostics, err := backend.Check(ctx, scriptengine.Request{
 				Source: "label = 'é🦀'; print(missing) # noqa\r\n", Filename: "step.py", Config: settings,
 			})
 			if err != nil || len(diagnostics) != 1 {
 				t.Fatalf("component result: %+v, %v", diagnostics, err)
 			}
 			finding := diagnostics[0]
-			if finding.TemplateEffect != checkinputs.TemplateEffectOpaqueName {
+			if finding.TemplateEffect != scriptengine.TemplateEffectOpaqueName {
 				t.Fatalf("typed semantic effect lost: %+v", finding)
 			}
 			if finding.Code != "F821" || finding.Filename != "step.py" ||
-				finding.Location != (checkinputs.ScriptPosition{Row: 1, Column: 21}) ||
-				finding.EndLocation != (checkinputs.ScriptPosition{Row: 1, Column: 28}) {
+				finding.Location != (sourcetext.Position{Line: 1, Column: 21}) ||
+				finding.EndLocation != (sourcetext.Position{Line: 1, Column: 28}) {
 				t.Fatalf("component changed Unicode diagnostic range: %+v", finding)
 			}
-			diagnostics, err = backend.Check(ctx, checkinputs.ScriptRequest{
+			diagnostics, err = backend.Check(ctx, scriptengine.Request{
 				Source: "print(1)\rprint(missing)\r", Filename: "step.py", Config: settings,
 			})
 			if err != nil || len(diagnostics) != 1 ||
-				diagnostics[0].Location != (checkinputs.ScriptPosition{Row: 1, Column: 16}) ||
-				diagnostics[0].EndLocation != (checkinputs.ScriptPosition{Row: 1, Column: 23}) {
+				diagnostics[0].Location != (sourcetext.Position{Line: 1, Column: 16}) ||
+				diagnostics[0].EndLocation != (sourcetext.Position{Line: 1, Column: 23}) {
 				t.Fatalf("component rejected lone-CR source coordinates: %+v, %v", diagnostics, err)
 			}
-			diagnostics, err = backend.Check(ctx, checkinputs.ScriptRequest{
+			diagnostics, err = backend.Check(ctx, scriptengine.Request{
 				Source: "def broken(\n", Filename: "step.py", Config: settings,
 			})
 			if err != nil || len(diagnostics) == 0 || diagnostics[0].Code != "invalid-syntax" {
@@ -145,14 +146,14 @@ func TestPackagedScriptEngineComponent(t *testing.T) {
 	}
 }
 
-func checkWorkflow(t *testing.T, ctx context.Context, backend checkinputs.ScriptBackend, wantCode string) {
+func checkWorkflow(t *testing.T, ctx context.Context, backend scriptengine.Backend, wantCode string) {
 	t.Helper()
-	cfg, err := checking.ConfigurationRules().Parse([]byte("tools:\n  ruff:\n    select: [F821]\n"))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("tools:\n  ruff:\n    select: [F821]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := checking.Analyze(ctx, checking.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Backend: backend}})},
-		[]workspace.Source{{Path: "ci.yml", Config: cfg, Content: []byte(
+	result, err := checking.Analyze(ctx, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"ruff": {Backend: backend}})},
+		[]workspace.InputFile{{Path: "ci.yml", Config: cfg, Content: []byte(
 			"on: push\r\njobs:\r\n  test:\r\n    runs-on: ubuntu-latest\r\n    steps:\r\n" +
 				"      - shell: python\r\n        run: |\r\n" +
 				"          label = 'é🦀'; print(missing) # noqa\r\n" +
@@ -181,14 +182,14 @@ func checkWorkflow(t *testing.T, ctx context.Context, backend checkinputs.Script
 // handling or source mapping after contract negotiation.
 type presentationIndependentBackend struct{ *componenthost.Plugin }
 
-func (b presentationIndependentBackend) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
+func (b presentationIndependentBackend) ScriptDescriptor() scriptengine.Descriptor {
 	d := b.Plugin.ScriptDescriptor()
 	d.ID, d.Rule.Provider = "example-independent-package", "example-independent-package"
 	d.Name = "Different presentation"
 	return d
 }
 
-func (b presentationIndependentBackend) Check(ctx context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (b presentationIndependentBackend) Check(ctx context.Context, request scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	findings, err := b.Plugin.Check(ctx, request)
 	for i := range findings {
 		findings[i].Code = "renamed-check"
