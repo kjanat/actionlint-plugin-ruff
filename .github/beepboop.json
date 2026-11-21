@@ -1,0 +1,64 @@
+{
+  "$schema": "https://beepboop.kjanat.dev/schema/v1.json",
+  "streams": {
+    "main": {
+      "packages": [],
+      "versionScope": "one-for-stream",
+      "mustPublish": [],
+      "versionSource": {
+        "kind": "tags",
+        "prefix": "v"
+      },
+      "versionFiles": [
+        {
+          "path": "Cargo.toml",
+          "template": "{version}",
+          "format": "toml",
+          "key": ["package", "version"]
+        },
+        {
+          "path": "crates/component/Cargo.toml",
+          "template": "{version}",
+          "format": "toml",
+          "key": ["package", "version"]
+        }
+      ],
+      "workflows": {
+        "release": {
+          "file": "release.yml",
+          "mode": "observe",
+          "ref": "refs/tags/v*",
+          "publications": []
+        }
+      },
+      "prepare": {
+        "strategy": "managed",
+        "workflow": {
+          "setup": {
+            "commands": "rustup toolchain install\ncargo update --workspace"
+          },
+          "file": "prepare-release.yml",
+          "ref": "master"
+        },
+        "versionLands": "via-version-pr",
+        "versionPrMerge": "squash"
+      },
+      "promote": {
+        "publishWhen": "version-pr-merged",
+        "workflow": {
+          "setup": {
+            "tagPrefix": "v"
+          },
+          "file": "tag-release.yml",
+          "ref": "master",
+          "publications": [],
+          "refs": {
+            "phase": "version",
+            "prefix": "v"
+          }
+        }
+      }
+    }
+  },
+  "managers": ["workflow"]
+}
