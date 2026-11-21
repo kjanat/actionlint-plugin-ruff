@@ -3,3 +3,8 @@
 [alias]
 cla = "clippy --locked --all-targets -- -D warnings"
 tl  = "test --locked"
+
+[target.wasm32-unknown-unknown]
+# ZIP enables getrandom's browser backend. The guest reads its bundled ZIP
+# from memory, so it can use the backend that returns Unsupported.
+rustflags = ["--cfg", "getrandom_backend=\"unsupported\""]

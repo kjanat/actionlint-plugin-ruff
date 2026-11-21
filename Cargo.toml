@@ -24,14 +24,14 @@ path = "src/main.rs"
 [dependencies]
 ruff_linter = { version = "0.17.4" }
 
-ruff_db             = { version = "0.0.22" }
-ruff_python_ast     = { version = "0.0.22" }
-ruff_python_codegen = { version = "0.0.22" }
-ruff_python_index   = { version = "0.0.22" }
-ruff_python_parser  = { version = "0.0.22" }
-ruff_ranged_value   = { version = "0.0.22" }
-ruff_source_file    = { version = "0.0.22" }
-ruff_workspace      = { version = "0.0.22", features = ["schemars"] }
+ruff_db             = { version = "0.0.23" }
+ruff_python_ast     = { version = "0.0.23" }
+ruff_python_codegen = { version = "0.0.23" }
+ruff_python_index   = { version = "0.0.23" }
+ruff_python_parser  = { version = "0.0.23" }
+ruff_ranged_value   = { version = "0.0.23" }
+ruff_source_file    = { version = "0.0.23" }
+ruff_workspace      = { version = "0.0.23", features = ["schemars"] }
 
 schemars   = { version = "1.2.3" }
 serde      = { version = "1.0", features = ["derive"] }
@@ -53,6 +53,8 @@ panic         = "abort"
 codegen-units = 1
 
 [patch.crates-io]
+# Use the upstream backend override fix (rust-random/getrandom#876) until it ships on crates.io.
+getrandom = { git = "https://github.com/rust-random/getrandom", rev = "967752d9889ce890c7ac2c8d304d1748d7911d11" }
 # Replace Ruff's browser clock dependency so the guest needs no JavaScript imports.
 # An unexpected clock call traps on wasm32.
-web-time = { path = "crates/web-time" }
+web-time  = { path = "crates/web-time" }

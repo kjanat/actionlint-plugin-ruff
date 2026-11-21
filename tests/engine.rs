@@ -205,7 +205,7 @@ fn metadata_schema_comes_from_the_linked_engine() {
     assert_eq!(data["metadata_version"], 1);
     assert_eq!(data["transport"], "wasm-core-json");
     assert_eq!(data["id"], "actionlint-plugin-ruff");
-    assert_eq!(data["homepage"], env!("CARGO_PKG_HOMEPAGE"));
+    assert_eq!(data["homepage"], env!("CARGO_PKG_REPOSITORY"));
     assert_eq!(data["languages"], json!(["python"]));
     assert_eq!(data["shells"], json!(["python"]));
     assert_eq!(data["file_extensions"], json!(["py", "pyi"]));
