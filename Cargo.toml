@@ -5,7 +5,6 @@ edition       = "2024"
 rust-version  = "1.97"
 description   = "Run Ruff on actionlint Python snippets through WebAssembly"
 documentation = "https://github.com/kjanat/actionlint-plugin-ruff/blob/master/docs/plugin-contract.md"
-homepage      = "https://github.com/kjanat/actionlint-plugin-ruff"
 repository    = "https://github.com/kjanat/actionlint-plugin-ruff"
 license       = "MIT"
 publish       = false

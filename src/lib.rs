@@ -133,7 +133,7 @@ pub fn metadata() -> Value {
         "name": "Ruff",
         "description": env!("CARGO_PKG_DESCRIPTION"),
         "license": env!("CARGO_PKG_LICENSE"),
-        "homepage": env!("CARGO_PKG_HOMEPAGE"),
+        "homepage": env!("CARGO_PKG_REPOSITORY"),
         "repository": env!("CARGO_PKG_REPOSITORY"),
         "documentation_url": "https://github.com/kjanat/actionlint-plugin-ruff/blob/master/docs/plugin-contract.md",
         "update_url": "https://api.github.com/repos/kjanat/actionlint-plugin-ruff/releases",
