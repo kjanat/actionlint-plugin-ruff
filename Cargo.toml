@@ -54,6 +54,8 @@ panic         = "abort"
 codegen-units = 1
 
 [patch.crates-io]
+# Use the upstream backend override fix (rust-random/getrandom#876) until it ships on crates.io.
+getrandom = { git = "https://github.com/rust-random/getrandom", rev = "967752d9889ce890c7ac2c8d304d1748d7911d11" }
 # Replace Ruff's browser clock dependency so the guest needs no JavaScript imports.
 # An unexpected clock call traps on wasm32.
-web-time = { path = "crates/web-time" }
+web-time  = { path = "crates/web-time" }
