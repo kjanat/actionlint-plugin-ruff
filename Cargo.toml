@@ -1,6 +1,6 @@
 [package]
 name          = "actionlint-plugin-ruff"
-version       = "0.3.0"
+version       = "0.4.0"
 edition       = "2024"
 rust-version  = "1.97"
 description   = "Run Ruff on actionlint Python snippets through WebAssembly"
