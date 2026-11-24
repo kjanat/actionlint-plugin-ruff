@@ -5,7 +5,7 @@ go 1.27.2
 toolchain go1.27.4
 
 require (
-	actionlint.kjanat.dev/v2 v2.0.0-20261121003645-cddfc05d2415
+	actionlint.kjanat.dev/v2 v2.0.0-20261123125733-d517adb1a17d
 	github.com/kjanat/wazero v1.12.2
 )
 
